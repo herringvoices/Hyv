@@ -1,0 +1,32 @@
+# 🛑 Environment Variables & Secrets
+.env
+
+# 🔹 Logs & Cache
+logs/
+*.log
+debug.log
+
+# 🔹 Build Artifacts
+bin/
+obj/
+out/
+
+# 🔹 Visual Studio & Rider (if used)
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln.cache
+*.csproj.user
+
+# 🔹 ASP.NET Temporary Files
+**/.vs/
+**/Properties/launchSettings.json
+
+# 🔹 Entity Framework Migrations (optional)
+Migrations/
+
+# 🔹 OS-Specific Files
+.DS_Store
+Thumbs.db

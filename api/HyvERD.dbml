@@ -1,0 +1,124 @@
+Table users {
+  id int [pk, increment]
+  firstName varchar [not null]
+  lastName varchar [not null]
+  username varchar [not null, unique]
+  email varchar [not null, unique]
+  password_hash varchar [not null]
+  profile_picture varchar
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table friendships {
+  id int [pk, increment]
+  sender_id int [not null, ref:> users.id]
+  recepient_id int [not null, ref:> users.id]
+  created_at timestamp [default: `now()`]
+  status varchar [not null, default: "Pending"]
+}
+
+Table friendship_categories {
+  id int [pk, increment]
+  user_id int [ref:> users.id]
+  name varchar
+}
+
+Table category_members {
+  id int [pk, increment]
+  category_id int [ref:> friendship_categories.id]
+  friend_id int [ref:> users.id]
+}
+
+Table tagalongs {
+  id int [pk, increment]
+  sender_id int [not null, ref:> users.id]
+  recepient_id int [not null, ref:> users.id]
+  status varchar [not null, default: "Pending"]
+  created_at timestamp [default: `now()`]
+}
+
+Table windows {
+  id int [pk, increment]
+  user_id int [not null, ref:> users.id]
+  title varchar
+  preferred_activity varchar
+  start timestamp [not null]
+  end timestamp [not null]
+  daysOfNoticeNeeded int
+  active bool
+  hangout_id int [ref:> hangouts.id]
+  created_at timestamp [default: `now()`]
+}
+
+Table window_participants {
+  id int [pk, increment]
+  window_id int [not null, ref:> windows.id]
+  user_id int [not null, ref:> users.id]
+}
+
+Table window_visibility {
+  id int [pk, increment]
+  category_id int [ref:> friendship_categories.id]
+  window_id int [ref:> windows.id]
+}
+
+Table hangouts {
+  id int [pk, increment]
+  title text
+  description text
+  confirmed_start timestamp [not null]
+  confirmed_end timestamp [not null]
+  active bool
+}
+
+Table hangout_requests {
+  id int [pk, increment]
+  hangout_id int [not null, ref:> hangouts.id]
+  sender_id int [not null, ref:> users.id]
+  recepient_id int [not null, ref:> users.id]
+  title text
+  description text
+  proposed_start timestamp
+  proposed_end timestamp
+  is_open bool
+  status varchar [not null, default: "Pending"]
+  created_at timestamp [default: `now()`]
+}
+
+Table join_requests {
+  id int [pk, increment]
+  hangout_id int [not null, ref:> hangouts.id]
+  user_id int [not null, ref:> users.id]
+  status varchar [not null, default: "Pending"]
+}
+
+Table hangout_guests {
+  id int [pk, increment]
+  hangout_id int [not null, ref:> hangouts.id]
+  user_id int [not null, ref:> users.id]
+  joined_at timestamp [default: `now()`]
+}
+
+Table presets {
+  id int [pk, increment]
+  user_id int [not null, ref:> users.id]
+  title varchar
+  preferred_activity varchar
+  start timestamp [not null]
+  end timestamp [not null]
+  daysOfNoticeNeeded int
+  created_at timestamp [default: `now()`]
+}
+
+Table preset_participants {
+  id int [pk, increment]
+  user_id int [not null, ref:> users.id]
+  preset_id int [not null, ref:> presets.id]
+}
+
+Table preset_visibility {
+  id int [pk, increment]
+  category_id int [ref:> friendship_categories.id]
+  preset_id int [ref:> presets.id]
+}
