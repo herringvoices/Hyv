@@ -2,16 +2,18 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-/* Your custom styles here */
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap");
+
+/* You can add your custom css below this line */
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Nunito", Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: theme("colors.dark");
-  background-color: theme("colors.light");
+  color: #261818;
+  background-color: #f2eee9;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;

@@ -10,7 +10,8 @@ namespace Hyv.Services
     public interface IUserService
     {
         Task<IEnumerable<User>> GetAllUsersAsync();
-        Task<bool> DeleteAllUsersAsync(); // Add this method to the interface
+        Task<bool> DeleteAllUsersAsync(); 
+        Task<IEnumerable<User>> SearchUsersByUsernameAsync(string query); 
     }
 
     public class UserService : IUserService
@@ -37,6 +38,13 @@ namespace Hyv.Services
             // Save changes
             int result = await _context.SaveChangesAsync();
             return result > 0;
+        }
+
+        public async Task<IEnumerable<User>> SearchUsersByUsernameAsync(string query)
+        {
+            return await _userManager
+                .Users.Where(u => EF.Functions.Like(u.UserName.ToLower(), $"%{query.ToLower()}%"))
+                .ToListAsync();
         }
     }
 }

@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import * as Avatar from "@radix-ui/react-avatar";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { Avatar, DropdownMenu } from "radix-ui";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars } from "@fortawesome/free-solid-svg-icons";
+import { UserContext } from "./context/UserContext";
 
 const NavBar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { loggedInUser } = useContext(UserContext);
 
   return (
     <nav className="bg-dark text-primary px-6 py-3 flex items-center justify-between">
@@ -66,21 +67,25 @@ const NavBar = () => {
           Logout
         </Link>
 
-        {/* User Profile Dropdown */}
+        {/* LoggedInUser Profile Dropdown */}
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
             <button className="flex items-center gap-2 text-primary hover:text-secondary">
               <Avatar.Root className="w-8 h-8 rounded-full bg-secondary">
                 <Avatar.Image
                   className="w-full h-full rounded-full"
-                  src="/path-to-profile-pic.jpg" // Replace with actual profile image path
+                  src={
+                    loggedInUser?.profilePicture || "/path-to-default-pic.jpg"
+                  } // Use loggedInUser profile image
                   alt="Profile"
                 />
                 <Avatar.Fallback className="text-light">?</Avatar.Fallback>
               </Avatar.Root>
               <span className="text-light">
-                {`{FullName}`}{" "}
-                <span className="text-xs text-secondary">{`{username}`}</span>
+                <span className="block">{loggedInUser?.firstName}</span>
+                <span className="block text-xs text-secondary">
+                  {loggedInUser?.userName}
+                </span>
               </span>
             </button>
           </DropdownMenu.Trigger>

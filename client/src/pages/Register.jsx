@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { Toast } from "radix-ui";
+
 import { registerUser } from "../services/authServices";
-import * as Toast from "@radix-ui/react-toast";
 
 const Register = () => {
   const navigate = useNavigate();

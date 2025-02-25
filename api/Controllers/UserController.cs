@@ -22,6 +22,13 @@ namespace Hyv.Controllers
             return Ok(users);
         }
 
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchUsers([FromQuery] string query)
+        {
+            var users = await _userService.SearchUsersByUsernameAsync(query);
+            return Ok(users);
+        }
+
         [HttpDelete("delete-all")]
         public async Task<IActionResult> DeleteAllUsers()
         {
