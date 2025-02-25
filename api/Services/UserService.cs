@@ -1,9 +1,12 @@
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
-using AutoMapper; // Added for mapping
+using AutoMapper;
 using Hyv.Data;
-using Hyv.DTOs; // Added for UserDto
+using Hyv.DTOs;
 using Hyv.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,21 +17,33 @@ namespace Hyv.Services
         Task<IEnumerable<User>> GetAllUsersAsync();
         Task<bool> DeleteAllUsersAsync();
 
-        // Changed return type to use UserDto.
-        Task<IEnumerable<UserDto>> SearchUsersByUsernameAsync(string query);
+        // Optional filter params
+        Task<IEnumerable<UserDto>> SearchUsersByUsernameAsync(
+            string query,
+            bool? friends = null,
+            bool? nonFriends = null,
+            int? categoryId = null
+        );
     }
 
     public class UserService : IUserService
     {
         private readonly UserManager<User> _userManager;
         private readonly HyvDbContext _context;
-        private readonly IMapper _mapper; // Added field
+        private readonly IMapper _mapper;
+        private readonly IHttpContextAccessor _httpContextAccessor; // Added field
 
-        public UserService(UserManager<User> userManager, HyvDbContext context, IMapper mapper)
+        public UserService(
+            UserManager<User> userManager,
+            HyvDbContext context,
+            IMapper mapper,
+            IHttpContextAccessor httpContextAccessor
+        ) // Added parameter
         {
             _userManager = userManager;
             _context = context;
-            _mapper = mapper; // Initialize mapper
+            _mapper = mapper;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<IEnumerable<User>> GetAllUsersAsync()
@@ -46,12 +61,48 @@ namespace Hyv.Services
             return result > 0;
         }
 
-        public async Task<IEnumerable<UserDto>> SearchUsersByUsernameAsync(string query)
+        public async Task<IEnumerable<UserDto>> SearchUsersByUsernameAsync(
+            string query,
+            bool? friends = null,
+            bool? nonFriends = null,
+            int? categoryId = null
+        )
         {
-            var users = await _userManager
-                .Users.Where(u => EF.Functions.Like(u.UserName.ToLower(), $"%{query.ToLower()}%"))
-                .ToListAsync();
-            
+            // Exclude logged in user using claims.
+            var currentUserId = _httpContextAccessor
+                .HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)
+                ?.Value;
+
+            var usersQuery = _userManager.Users.Where(u =>
+                EF.Functions.Like(u.UserName.ToLower(), $"%{query.ToLower()}%")
+                && u.Id != currentUserId
+            );
+
+            if (friends.HasValue && friends.Value)
+            {
+                // Filter users having at least one friendship.
+                usersQuery = usersQuery.Where(u =>
+                    u.SentFriendships.Any() || u.ReceivedFriendships.Any()
+                );
+            }
+
+            if (nonFriends.HasValue && nonFriends.Value)
+            {
+                // Filter users with no friendships.
+                usersQuery = usersQuery.Where(u =>
+                    !u.SentFriendships.Any() && !u.ReceivedFriendships.Any()
+                );
+            }
+
+            if (categoryId.HasValue)
+            {
+                // Filter users belonging to a specific friendship category.
+                usersQuery = usersQuery.Where(u =>
+                    u.FriendshipCategories.Any(fc => fc.Id == categoryId.Value)
+                );
+            }
+
+            var users = await usersQuery.ToListAsync();
             return _mapper.Map<IEnumerable<UserDto>>(users);
         }
     }
