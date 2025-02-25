@@ -1,5 +1,6 @@
 import { Routes, Route, Outlet } from "react-router-dom";
 import NavBar from "./NavBar";
+import Logout from "./pages/Logout";
 
 function ApplicationViews() {
   return (
@@ -19,7 +20,7 @@ function ApplicationViews() {
         <Route path="friends" element={<div>Friends Placeholder</div>} />
         <Route path="hangouts" element={<div>Hangouts Placeholder</div>} />
       </Route>
-      <Route path="/logout" element={<div>Logout Placeholder</div>} />
+      <Route path="/logout" element={<Logout />} />
       <Route path="*" element={<div>404 Not Found</div>} />
     </Routes>
   );

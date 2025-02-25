@@ -21,5 +21,15 @@ namespace Hyv.Controllers
             var users = await _userService.GetAllUsersAsync();
             return Ok(users);
         }
+
+        [HttpDelete("delete-all")]
+        public async Task<IActionResult> DeleteAllUsers()
+        {
+            bool success = await _userService.DeleteAllUsersAsync();
+            if (success)
+                return Ok(new { message = "All users deleted successfully." });
+            else
+                return BadRequest(new { message = "Failed to delete users." });
+        }
     }
 }

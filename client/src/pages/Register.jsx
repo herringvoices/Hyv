@@ -3,29 +3,33 @@ import { useNavigate, Link } from "react-router-dom";
 import { registerUser } from "../services/authServices";
 import * as Toast from "@radix-ui/react-toast";
 
-export default function Register() {
+const Register = () => {
   const navigate = useNavigate();
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [formData, setFormData] = useState({
     email: "",
+    userName: "",
     password: "",
     firstName: "",
     lastName: "",
   });
 
-  function handleChange(e) {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  }
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const result = await registerUser(formData);
 
     if (!result.success) {
       let messages = [];
 
-      // Check if result.message is a string that includes multiple errors
       if (typeof result.message === "string" && result.message.includes(",")) {
         messages = result.message
           .replace("Registration failed: ", "")
@@ -37,7 +41,7 @@ export default function Register() {
       setToastMessage(
         <ul className="list-disc list-inside">
           {messages.map((err, index) => (
-            <li key={index}>{err.trim()}</li> // Trim to clean up extra spaces
+            <li key={index}>{err.trim()}</li>
           ))}
         </ul>
       );
@@ -47,13 +51,13 @@ export default function Register() {
     }
 
     navigate("/login");
-  }
+  };
 
-  function handleKeyPress(e) {
+  const handleKeyPress = (e) => {
     if (e.key === "Enter") {
       handleSubmit(e);
     }
-  }
+  };
 
   return (
     <div className="w-screen min-h-screen flex flex-col items-center justify-center bg-dark">
@@ -69,6 +73,13 @@ export default function Register() {
             type="email"
             name="email"
             placeholder="Email"
+            onChange={handleChange}
+          />
+          <input
+            className="block w-full mb-2 p-2 text-dark rounded"
+            type="text"
+            name="userName"
+            placeholder="Username"
             onChange={handleChange}
           />
           <input
@@ -122,4 +133,6 @@ export default function Register() {
       </Toast.Provider>
     </div>
   );
-}
+};
+
+export default Register;

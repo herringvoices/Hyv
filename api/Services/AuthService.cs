@@ -90,14 +90,6 @@ namespace Hyv.Services
                 return new AuthResultDto { Success = false, Message = "HttpContext is null." };
             }
 
-            // Read user ID from HttpContext.Items (set in OnTokenValidated)
-            foreach (var key in _httpContextAccessor.HttpContext.Items.Keys)
-            {
-                Console.WriteLine(
-                    $"Key: {key}, Value: {_httpContextAccessor.HttpContext.Items[key]}"
-                );
-            }
-
             var userId = _httpContextAccessor.HttpContext.Items["UserId"] as string;
             if (string.IsNullOrEmpty(userId))
             {
@@ -122,31 +114,55 @@ namespace Hyv.Services
 
         public async Task<AuthResultDto> RegisterAsync(RegisterDto registerDto)
         {
+            Console.WriteLine(
+                $"RegisterDto: UserName={registerDto.UserName}, Email={registerDto.Email}, FirstName={registerDto.FirstName}, LastName={registerDto.LastName}"
+            );
+            // Check if username is already taken
+            var existingUser = await _userManager.FindByNameAsync(registerDto.UserName);
+            if (existingUser != null)
+            {
+                return new AuthResultDto
+                {
+                    Success = false,
+                    Message = "Username is already taken.",
+                };
+            }
+
             var user = new User
             {
-                UserName = registerDto.Email,
+                UserName = registerDto.UserName,
                 Email = registerDto.Email,
                 FirstName = registerDto.FirstName,
                 LastName = registerDto.LastName,
             };
 
             var result = await _userManager.CreateAsync(user, registerDto.Password);
+
             if (!result.Succeeded)
             {
-                var errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
                 return new AuthResultDto
                 {
                     Success = false,
-                    Message = $"Registration failed: {errorMessage}",
+                    Message = string.Join(", ", result.Errors.Select(e => e.Description)),
                 };
             }
 
+            // Generate token and set cookie like in LoginAsync
             var token = GenerateJwtToken(user);
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTime.UtcNow.AddDays(7),
+            };
+            _httpContextAccessor.HttpContext.Response.Cookies.Append("jwt", token, cookieOptions);
+
             return new AuthResultDto
             {
                 Success = true,
-                Token = token,
-                Message = "Registration successful.",
+                Message = "Registration successful",
+                User = _mapper.Map<UserDto>(user),
             };
         }
 
@@ -176,9 +192,6 @@ namespace Hyv.Services
         private string GenerateJwtToken(User user)
         {
             var jwtSecret = Env.GetString("JWT_SECRET");
-            Console.WriteLine(
-                $"🔹 Generating JWT with secret length: {jwtSecret?.Length ?? 0} characters long"
-            );
 
             var key = Encoding.UTF8.GetBytes(jwtSecret);
             var claims = new[]
@@ -202,7 +215,6 @@ namespace Hyv.Services
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var tokenString = tokenHandler.WriteToken(token);
 
-            Console.WriteLine($"✅ Generated Token: {tokenString}");
             return tokenString;
         }
     }

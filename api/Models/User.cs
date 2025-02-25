@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Hyv.Models
 {
     // Properties inherrited from IdentityUser: Id, Username, Email, and PasswordHash.
+    [Index(nameof(UserName), IsUnique = true)]
     public class User : IdentityUser
     {
         [Required]
