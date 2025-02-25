@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Hyv.Models
 {
     // Properties inherrited from IdentityUser: Id, Username, Email, and PasswordHash.
+    [Index(nameof(UserName), IsUnique = true)]
     public class User : IdentityUser
     {
         [Required]
@@ -16,7 +18,7 @@ namespace Hyv.Models
         [MaxLength(50)]
         public string LastName { get; set; }
 
-        public string ProfilePicture { get; set; }
+        public string ProfilePicture { get; set; } = "";
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

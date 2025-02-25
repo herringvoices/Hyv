@@ -23,6 +23,7 @@ namespace Hyv.Data
         public DbSet<HangoutRequest> HangoutRequests { get; set; }
         public DbSet<HangoutRequestRecipient> HangoutRequestRecipients { get; set; }
         public DbSet<HangoutGuest> HangoutGuests { get; set; }
+        public DbSet<WindowVisibility> WindowVisibilities { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -188,7 +189,7 @@ namespace Hyv.Data
             modelBuilder
                 .Entity<HangoutGuest>()
                 .HasOne(hg => hg.Hangout)
-                .WithMany(h => h.HangoutGuests) 
+                .WithMany(h => h.HangoutGuests)
                 .HasForeignKey(hg => hg.HangoutId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -197,6 +198,21 @@ namespace Hyv.Data
                 .HasOne(hg => hg.User)
                 .WithMany()
                 .HasForeignKey(hg => hg.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure WindowVisibility relationships
+            modelBuilder
+                .Entity<WindowVisibility>()
+                .HasOne(wv => wv.Window)
+                .WithMany(w => w.WindowVisibilities)
+                .HasForeignKey(wv => wv.WindowId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder
+                .Entity<WindowVisibility>()
+                .HasOne(wv => wv.Category)
+                .WithMany()
+                .HasForeignKey(wv => wv.CategoryId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

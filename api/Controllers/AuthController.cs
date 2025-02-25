@@ -2,6 +2,8 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Hyv.DTOs;
 using Hyv.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hyv.Controllers
@@ -30,6 +32,7 @@ namespace Hyv.Controllers
             return Ok(result);
         }
 
+        [Authorize]
         [HttpGet("Me")]
         public async Task<IActionResult> GetCurrentUser()
         {
