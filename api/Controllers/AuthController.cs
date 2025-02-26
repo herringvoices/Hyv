@@ -54,5 +54,16 @@ namespace Hyv.Controllers
             }
             return Ok(result);
         }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var result = await _authService.LogoutAsync();
+            if (!result.Success)
+            {
+                return BadRequest(result.Message);
+            }
+            return Ok(result);
+        }
     }
 }

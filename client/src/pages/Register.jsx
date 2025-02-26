@@ -66,7 +66,7 @@ const Register = () => {
         <form
           className="p-6 bg-primary text-dark rounded-md shadow-lg w-80"
           onSubmit={handleSubmit}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyPress}
         >
           <h1 className="text-2xl mb-4 text-center">Register</h1>
           <input
