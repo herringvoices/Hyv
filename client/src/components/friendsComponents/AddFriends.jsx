@@ -11,7 +11,7 @@ function AddFriends({ pendingRequests, refreshPending }) {
 
   const handleSearch = async () => {
     try {
-      const result = await getUsersByUsername(query);
+      const result = await getUsersByUsername(query, { nonFriends: true });
       setUsers(result);
     } catch (error) {
       console.error(error);
@@ -44,7 +44,7 @@ function AddFriends({ pendingRequests, refreshPending }) {
     <>
       <div className="flex justify-center px-2 py-2">
         <input
-          className="!px-2 py-1 w-2/3 mx-2 rounded-md"
+          className="!px-2 py-1 w-2/3 mx-2 text-dark rounded-md"
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -64,7 +64,6 @@ function AddFriends({ pendingRequests, refreshPending }) {
       <ul>
         {users.map((user) => (
           <UserItem
-          
             key={user.id}
             user={user}
             pending={isPending(user.id)}

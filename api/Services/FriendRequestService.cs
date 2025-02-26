@@ -21,6 +21,9 @@ namespace Hyv.Services
 
         // New method: delete all friend requests.
         Task<bool> DeleteAllFriendRequestsAsync();
+
+        // New method: respond to a friend request.
+        Task<bool> RespondToFriendRequestAsync(int requestId, string status);
     }
 
     public class FriendRequestService : IFriendRequestService
@@ -114,6 +117,23 @@ namespace Hyv.Services
         {
             // Remove all friend request (friendship) records.
             _context.Friendships.RemoveRange(_context.Friendships);
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> RespondToFriendRequestAsync(int requestId, string status)
+        {
+            var friendship = await _context.Friendships.FindAsync(requestId);
+            if (friendship == null)
+                return false;
+
+            if (status == "Accepted")
+                friendship.Status = Status.Accepted;
+            else if (status == "Rejected")
+                friendship.Status = Status.Rejected;
+            else
+                return false;
+
+            _context.Friendships.Update(friendship);
             return await _context.SaveChangesAsync() > 0;
         }
     }

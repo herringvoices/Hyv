@@ -7,23 +7,23 @@ function Pending() {
   const [pendingFriendRequests, setPendingFriendRequests] = useState([]);
   const { loggedInUser } = useContext(UserContext);
 
-  useEffect(() => {
-    const fetchPendingRequests = async () => {
-      try {
-        const result = await getPendingFriendRequests(false);
-        setPendingFriendRequests(result);
-      } catch (error) {
-        console.error(error);
-      }
-    };
+  const fetchPendingRequests = async () => {
+    try {
+      const result = await getPendingFriendRequests(false);
+      setPendingFriendRequests(result);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
+  useEffect(() => {
     fetchPendingRequests();
   }, [loggedInUser]);
 
   return (
     <ul>
       {pendingFriendRequests.map((request) => (
-        <PendingItem key={request.id} request={request} />
+        <PendingItem key={request.id} request={request} fetchPendingRequests={fetchPendingRequests} />
       ))}
     </ul>
   );

@@ -1,14 +1,17 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { respondToFriendRequest } from "../../services/friendRequestService";
 
-function PendingItem({ request }) {
+function PendingItem({ request, fetchPendingRequests }) {
   const [showModal, setShowModal] = useState(false);
   const [modalText, setModalText] = useState("");
+  const [isAccepted, setIsAccepted] = useState(null);
 
   const handleAcceptClick = () => {
     setModalText(
       `Are you sure you want to accept this friend request from ${request.sender.fullName}?`
     );
+    setIsAccepted(true);
     setShowModal(true);
   };
 
@@ -16,11 +19,17 @@ function PendingItem({ request }) {
     setModalText(
       `Are you sure you want to reject this friend request from ${request.sender.fullName}?`
     );
+    setIsAccepted(false);
     setShowModal(true);
   };
 
   const handleConfirm = async () => {
-    // Placeholder for accept/reject logic
+    try {
+      await respondToFriendRequest(request.id, isAccepted);
+      await fetchPendingRequests(); // Trigger fetch after responding
+    } catch (error) {
+      console.error("Failed to respond to friend request:", error);
+    }
     setShowModal(false);
   };
 
