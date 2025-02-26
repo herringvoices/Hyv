@@ -1,9 +1,32 @@
+import { useState, useEffect, useContext } from "react";
 import { Tabs } from "radix-ui";
 import AddFriends from "../components/friendsComponents/AddFriends";
 import MyFriends from "../components/friendsComponents/MyFriends";
 import Pending from "../components/friendsComponents/Pending";
+import { getPendingFriendRequests } from "../services/friendRequestService";
+import { UserContext } from "../context/UserContext";
 
 function Friends() {
+  const { loggedInUser } = useContext(UserContext);
+  const [pendingRequests, setPendingRequests] = useState([]);
+
+  // Function to refresh pending friend requests
+  const refreshPending = async () => {
+    try {
+      const pending = await getPendingFriendRequests();
+      setPendingRequests(pending);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  // Refresh pending requests on mount and when loggedInUser changes
+  useEffect(() => {
+    if (loggedInUser) {
+      refreshPending();
+    }
+  }, [loggedInUser]);
+
   return (
     <div className="mt-2 w-full h-full  flex justify-center">
       <Tabs.Root
@@ -41,7 +64,10 @@ function Friends() {
         </Tabs.List>
 
         <Tabs.Content value="add" className="p-4">
-          <AddFriends />
+          <AddFriends
+            pendingRequests={pendingRequests}
+            refreshPending={refreshPending}
+          />
         </Tabs.Content>
         <Tabs.Content value="myfriends" className="p-4">
           <MyFriends />
