@@ -26,7 +26,7 @@ function UserItem({ user, pending, refreshPending }) {
   const handleCancel = () => setShowModal(false);
 
   return (
-    <li className="flex justify-between items-center p-2 text-dark bg-primary rounded-md text-xl">
+    <li className="flex justify-between items-center my-3 p-2 text-dark bg-primary rounded-md text-xl">
       <div className="flex items-center">
         {user.profilePicture ? (
           <img

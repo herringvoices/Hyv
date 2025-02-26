@@ -10,7 +10,9 @@ function ApplicationViews() {
         path="/"
         element={
           <>
-            <NavBar />
+            <div className="shadow-sm shadow-primary">
+              <NavBar />
+            </div>
             <Outlet />
           </>
         }

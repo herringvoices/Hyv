@@ -28,10 +28,10 @@ function Friends() {
   }, [loggedInUser]);
 
   return (
-    <div className="mt-2 w-full h-full  flex justify-center">
+    <div className="mt-2 w-full h-full   flex justify-center">
       <Tabs.Root
         defaultValue="add"
-        className="mt-2 bg-dark w-1/3 text-primary rounded-md "
+        className="mt-2 bg-dark w-1/3 border border-primary shadow-md shadow-primary text-primary rounded-md "
       >
         <Tabs.List className="flex gap-2 bg-dark p-2 rounded-md">
           <Tabs.Trigger

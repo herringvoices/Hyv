@@ -64,6 +64,7 @@ function AddFriends({ pendingRequests, refreshPending }) {
       <ul>
         {users.map((user) => (
           <UserItem
+          
             key={user.id}
             user={user}
             pending={isPending(user.id)}

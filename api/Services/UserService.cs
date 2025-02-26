@@ -14,7 +14,7 @@ namespace Hyv.Services
 {
     public interface IUserService
     {
-        Task<IEnumerable<User>> GetAllUsersAsync();
+        Task<IEnumerable<UserDto>> GetAllUsersAsync(); // Updated return type
         Task<bool> DeleteAllUsersAsync();
 
         // Optional filter params
@@ -46,9 +46,10 @@ namespace Hyv.Services
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task<IEnumerable<User>> GetAllUsersAsync()
+        public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
         {
-            return await _userManager.Users.ToListAsync();
+            var users = await _userManager.Users.ToListAsync();
+            return _mapper.Map<IEnumerable<UserDto>>(users);
         }
 
         public async Task<bool> DeleteAllUsersAsync()
@@ -80,9 +81,10 @@ namespace Hyv.Services
 
             if (friends.HasValue && friends.Value)
             {
-                // Filter users having at least one friendship.
+                // Filter users having at least one accepted friendship.
                 usersQuery = usersQuery.Where(u =>
-                    u.SentFriendships.Any() || u.ReceivedFriendships.Any()
+                    u.SentFriendships.Any(f => f.Status == Status.Accepted)
+                    || u.ReceivedFriendships.Any(f => f.Status == Status.Accepted)
                 );
             }
 
