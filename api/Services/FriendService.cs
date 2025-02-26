@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -14,6 +15,8 @@ namespace Hyv.Services
     public interface IFriendService
     {
         Task<IEnumerable<UserDto>> GetFriendsAsync(string search);
+        Task<bool> RemoveFriendAsync(string friendId);
+        Task<bool> BlockUserAsync(string userIdToBlock);
     }
 
     public class FriendService : IFriendService
@@ -68,6 +71,59 @@ namespace Hyv.Services
             }
 
             return _mapper.Map<IEnumerable<UserDto>>(friendList);
+        }
+
+        public async Task<bool> RemoveFriendAsync(string friendId)
+        {
+            var currentUserId = _httpContextAccessor
+                .HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)
+                ?.Value;
+            if (string.IsNullOrEmpty(currentUserId) || currentUserId == friendId)
+                return false;
+
+            var friendship = await _context.Friendships.FirstOrDefaultAsync(f =>
+                (f.SenderId == currentUserId && f.RecipientId == friendId)
+                || (f.SenderId == friendId && f.RecipientId == currentUserId)
+            );
+
+            if (friendship == null)
+                return false;
+
+            _context.Friendships.Remove(friendship);
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> BlockUserAsync(string userIdToBlock)
+        {
+            var currentUserId = _httpContextAccessor
+                .HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)
+                ?.Value;
+            if (string.IsNullOrEmpty(currentUserId) || currentUserId == userIdToBlock)
+                return false;
+
+            var friendship = await _context.Friendships.FirstOrDefaultAsync(f =>
+                (f.SenderId == currentUserId && f.RecipientId == userIdToBlock)
+                || (f.SenderId == userIdToBlock && f.RecipientId == currentUserId)
+            );
+
+            if (friendship != null)
+            {
+                friendship.Status = Status.Rejected;
+                _context.Friendships.Update(friendship);
+            }
+            else
+            {
+                _context.Friendships.Add(
+                    new Friendship
+                    {
+                        SenderId = currentUserId,
+                        RecipientId = userIdToBlock,
+                        Status = Status.Rejected,
+                        CreatedAt = DateTime.UtcNow,
+                    }
+                );
+            }
+            return await _context.SaveChangesAsync() > 0;
         }
     }
 }
