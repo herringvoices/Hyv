@@ -98,14 +98,19 @@ namespace Hyv.Services
             if (userIsSender.HasValue)
             {
                 if (userIsSender.Value)
-                    pendingQuery = pendingQuery.Where(f => f.SenderId == currentUserId);
+                    pendingQuery = pendingQuery.Where(f =>
+                        EF.Functions.Like(f.SenderId, currentUserId)
+                    );
                 else
-                    pendingQuery = pendingQuery.Where(f => f.RecipientId == currentUserId);
+                    pendingQuery = pendingQuery.Where(f =>
+                        EF.Functions.Like(f.RecipientId, currentUserId)
+                    );
             }
             else
             {
                 pendingQuery = pendingQuery.Where(f =>
-                    f.SenderId == currentUserId || f.RecipientId == currentUserId
+                    EF.Functions.Like(f.SenderId, currentUserId)
+                    || EF.Functions.Like(f.RecipientId, currentUserId)
                 );
             }
 

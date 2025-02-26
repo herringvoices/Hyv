@@ -23,9 +23,19 @@ namespace Hyv.Controllers
         }
 
         [HttpGet("search")]
-        public async Task<IActionResult> SearchUsers([FromQuery] string query)
+        public async Task<IActionResult> SearchUsers(
+            [FromQuery] string query,
+            [FromQuery] bool? friends,
+            [FromQuery] bool? nonFriends,
+            [FromQuery] int? categoryId
+        )
         {
-            var users = await _userService.SearchUsersByUsernameAsync(query);
+            var users = await _userService.SearchUsersByUsernameAsync(
+                query,
+                friends,
+                nonFriends,
+                categoryId
+            );
             return Ok(users);
         }
 

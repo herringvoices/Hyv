@@ -140,6 +140,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendRequestService, FriendRequestService>(); // Added registration for FriendRequestService
+builder.Services.AddScoped<IFriendService, FriendService>(); // Added registration for FriendService
 
 // ✅ Register AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
