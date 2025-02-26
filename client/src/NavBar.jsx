@@ -8,7 +8,22 @@ import { UserContext } from "./context/UserContext";
 
 const NavBar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { loggedInUser } = useContext(UserContext);
+  const { loggedInUser, relationshipNotifications } = useContext(UserContext);
+
+  // Navigation items with notification badges
+  const navItems = [
+    { name: "Windows", path: "/windows" },
+    { name: "Hive", path: "/hive" },
+    {
+      name: "Friends",
+      path: "/friends",
+      badge:
+        relationshipNotifications?.total > 0
+          ? relationshipNotifications.total
+          : null,
+    },
+    { name: "Hangouts", path: "/hangouts" },
+  ];
 
   return (
     <nav className="bg-dark text-primary  border-b-primary border-solid px-6 py-3 flex items-center justify-between">
@@ -19,15 +34,21 @@ const NavBar = () => {
 
       {/* Desktop Navigation Links */}
       <div className="hidden w-full text-lg md:flex justify-start ms-5 gap-6">
-        {["Windows", "Hive", "Friends", "Hangouts"].map((item) => (
+        {navItems.map((item) => (
           <motion.div
-            key={item}
+            key={item.name}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
+            className="relative"
           >
-            <Link to={`/${item.toLowerCase()}`} className="hover:text-light">
-              {item}
+            <Link to={item.path} className="hover:text-light">
+              {item.name}
             </Link>
+            {item.badge && (
+              <span className="absolute -top-2 -right-4 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                {item.badge}
+              </span>
+            )}
           </motion.div>
         ))}
       </div>
@@ -48,14 +69,19 @@ const NavBar = () => {
           exit={{ opacity: 0, y: -10 }}
           className="absolute top-16 left-0 w-full bg-dark shadow-lg flex flex-col gap-2 p-4 md:hidden"
         >
-          {["Windows", "Hive", "Friends", "Hangouts"].map((item) => (
+          {navItems.map((item) => (
             <Link
-              key={item}
-              to={`/${item.toLowerCase()}`}
-              className="text-primary hover:text-secondary py-2"
+              key={item.name}
+              to={item.path}
+              className="text-primary hover:text-secondary py-2 relative"
               onClick={() => setMenuOpen(false)}
             >
-              {item}
+              {item.name}
+              {item.badge && (
+                <span className="ml-2 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                  {item.badge}
+                </span>
+              )}
             </Link>
           ))}
         </motion.div>

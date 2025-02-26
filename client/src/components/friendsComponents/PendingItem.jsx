@@ -1,15 +1,24 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { respondToFriendRequest } from "../../services/friendRequestService";
+import { respondToTagalongRequest } from "../../services/tagalongService";
 
-function PendingItem({ request, fetchPendingRequests }) {
+function PendingItem({
+  request,
+  fetchPendingRequests,
+  refreshNotifications,
+  isTagalong,
+}) {
   const [showModal, setShowModal] = useState(false);
   const [modalText, setModalText] = useState("");
   const [isAccepted, setIsAccepted] = useState(null);
 
+  const requestType = isTagalong ? "tagalong" : "friend";
+  const requestSender = request.sender;
+
   const handleAcceptClick = () => {
     setModalText(
-      `Are you sure you want to accept this friend request from ${request.sender.fullName}?`
+      `Are you sure you want to accept this ${requestType} request from ${requestSender.fullName}?`
     );
     setIsAccepted(true);
     setShowModal(true);
@@ -17,7 +26,7 @@ function PendingItem({ request, fetchPendingRequests }) {
 
   const handleRejectClick = () => {
     setModalText(
-      `Are you sure you want to reject this friend request from ${request.sender.fullName}?`
+      `Are you sure you want to reject this ${requestType} request from ${requestSender.fullName}?`
     );
     setIsAccepted(false);
     setShowModal(true);
@@ -25,10 +34,17 @@ function PendingItem({ request, fetchPendingRequests }) {
 
   const handleConfirm = async () => {
     try {
-      await respondToFriendRequest(request.id, isAccepted);
-      await fetchPendingRequests(); // Trigger fetch after responding
+      if (isTagalong) {
+        await respondToTagalongRequest(request.id, isAccepted);
+      } else {
+        await respondToFriendRequest(request.id, isAccepted);
+      }
+
+      // Update both local state and global notification counts
+      await fetchPendingRequests();
+      await refreshNotifications();
     } catch (error) {
-      console.error("Failed to respond to friend request:", error);
+      console.error(`Failed to respond to ${requestType} request:`, error);
     }
     setShowModal(false);
   };
@@ -38,18 +54,23 @@ function PendingItem({ request, fetchPendingRequests }) {
   return (
     <li className="flex justify-between my-3 items-center p-2 text-dark bg-primary rounded-md text-xl">
       <div className="flex items-center">
-        {request.sender.profilePicture ? (
+        {requestSender.profilePicture ? (
           <img
-            src={request.sender.profilePicture}
-            alt={`${request.sender.fullName}'s profile`}
+            src={requestSender.profilePicture}
+            alt={`${requestSender.fullName}'s profile`}
             className="w-10 h-10 rounded-full"
           />
         ) : (
           <FontAwesomeIcon className="ms-2 size-12 " icon="fa-solid fa-user" />
         )}
         <div className="mx-2 text-left">
-          <div>{request.sender.fullName}</div>
-          <div className="text-sm">{request.sender.userName}</div>
+          <div>{requestSender.fullName}</div>
+          <div className="text-sm">{requestSender.userName}</div>
+          {isTagalong && (
+            <div className="text-sm font-semibold mt-1">
+              Wants to tagalong with you
+            </div>
+          )}
         </div>
       </div>
       <div className="me-2 flex gap-2">
@@ -81,7 +102,7 @@ function PendingItem({ request, fetchPendingRequests }) {
               </button>
               <button
                 onClick={handleConfirm}
-                className="px-4 py-2 bg-dark text-white rounded-md hover:opacity-90"
+                className="px-4 py-2 bg-dark text-light rounded-md hover:opacity-90"
               >
                 Yes
               </button>
