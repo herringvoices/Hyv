@@ -25,3 +25,17 @@ export async function getPendingFriendRequests(userIsSender) {
   }
   return await response.json();
 }
+
+export async function respondToFriendRequest(requestId, accepted) {
+  const response = await fetch(
+    `${API_BASE}/${requestId}/respond?accepted=${accepted}`,
+    {
+      method: "POST",
+    }
+  );
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error);
+  }
+  return await response.json();
+}

@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Hyv.Models;
 using Hyv.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -44,10 +45,32 @@ namespace Hyv.Controllers
                 return BadRequest(new { message = "Unable to delete friend requests." });
             return Ok(new { message = "All friend requests deleted." });
         }
+
+        [HttpPost("{requestId:int}/respond")]
+        public async Task<IActionResult> RespondToFriendRequest(
+            int requestId,
+            [FromQuery] bool accepted
+        )
+        {
+            if (string.IsNullOrEmpty(requestId.ToString()))
+                return BadRequest(new { message = "RequestId is required." });
+
+            var status = accepted ? "Accepted" : "Rejected";
+            var result = await _friendRequestService.RespondToFriendRequestAsync(requestId, status);
+            if (!result)
+                return BadRequest(new { message = "Unable to respond to friend request." });
+
+            return Ok(new { message = "Friend request response recorded." });
+        }
     }
 
     public class SendFriendRequestDto
     {
         public string RecipientId { get; set; }
+    }
+
+    public class RespondFriendRequestDto
+    {
+        public string Status { get; set; }
     }
 }
