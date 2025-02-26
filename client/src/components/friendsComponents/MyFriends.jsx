@@ -48,7 +48,11 @@ function MyFriends() {
       {friends.length > 0 ? (
         <ul>
           {friends.map((friend) => (
-            <FriendItem key={friend.id} friend={friend} />
+            <FriendItem
+              key={friend.id}
+              friend={friend}
+              setFriends={setFriends}
+            />
           ))}
         </ul>
       ) : (

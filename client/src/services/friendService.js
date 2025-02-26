@@ -9,3 +9,25 @@ export async function getFriends(search) {
   }
   return await response.json();
 }
+
+export async function removeFriend(friendId) {
+  const response = await fetch(`${API_BASE}/${friendId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error);
+  }
+  return;
+}
+
+export async function blockUser(userIdToBlock) {
+  const response = await fetch(`${API_BASE}/${userIdToBlock}/block`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error);
+  }
+  return;
+}

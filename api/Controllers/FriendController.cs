@@ -21,5 +21,25 @@ namespace Hyv.Controllers
             var friends = await _friendService.GetFriendsAsync(search);
             return Ok(friends);
         }
+
+        // New: Unfriend endpoint.
+        [HttpDelete("{friendId}")]
+        public async Task<IActionResult> Unfriend(string friendId)
+        {
+            var removed = await _friendService.RemoveFriendAsync(friendId);
+            if (!removed)
+                return NotFound();
+            return NoContent();
+        }
+
+        // New: Block endpoint.
+        [HttpPost("{userIdToBlock}/block")]
+        public async Task<IActionResult> BlockUser(string userIdToBlock)
+        {
+            var blocked = await _friendService.BlockUserAsync(userIdToBlock);
+            if (!blocked)
+                return BadRequest(new { message = "Blocking failed." });
+            return NoContent();
+        }
     }
 }

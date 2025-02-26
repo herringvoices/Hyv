@@ -85,10 +85,24 @@ namespace Hyv.Services
                 .Select(f => f.SenderId);
             var friendIds = await friendsFromSender.Union(friendsFromRecipient).ToListAsync();
 
-            var usersQuery = _userManager.Users.Where(u =>
-                EF.Functions.Like(u.UserName.ToLower(), $"%{query.ToLower()}%")
-                && u.Id != currentUserId
-            );
+            // NEW: Compute rejected IDs from rejected friendships
+            var rejectedFromSender = _context
+                .Friendships.Where(f => f.Status == Status.Rejected && f.SenderId == currentUserId)
+                .Select(f => f.RecipientId);
+            var rejectedFromRecipient = _context
+                .Friendships.Where(f =>
+                    f.Status == Status.Rejected && f.RecipientId == currentUserId
+                )
+                .Select(f => f.SenderId);
+            var rejectedIds = await rejectedFromSender.Union(rejectedFromRecipient).ToListAsync();
+
+            var usersQuery = _userManager
+                .Users.Where(u =>
+                    EF.Functions.Like(u.UserName.ToLower(), $"%{query.ToLower()}%")
+                    && u.Id != currentUserId
+                )
+                // Exclude users with a rejected friendship entry
+                .Where(u => !rejectedIds.Contains(u.Id));
 
             if (friends.HasValue && friends.Value)
             {
