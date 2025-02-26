@@ -69,10 +69,21 @@ namespace Hyv.Services
             int? categoryId = null
         )
         {
-            // Exclude logged in user using claims.
             var currentUserId = _httpContextAccessor
                 .HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)
                 ?.Value;
+
+            // Removed: loading of currentUser and its friendship navigations.
+            // New logic: derive friendIds from the Friendships table.
+            var friendsFromSender = _context
+                .Friendships.Where(f => f.Status == Status.Accepted && f.SenderId == currentUserId)
+                .Select(f => f.RecipientId);
+            var friendsFromRecipient = _context
+                .Friendships.Where(f =>
+                    f.Status == Status.Accepted && f.RecipientId == currentUserId
+                )
+                .Select(f => f.SenderId);
+            var friendIds = await friendsFromSender.Union(friendsFromRecipient).ToListAsync();
 
             var usersQuery = _userManager.Users.Where(u =>
                 EF.Functions.Like(u.UserName.ToLower(), $"%{query.ToLower()}%")
@@ -81,24 +92,16 @@ namespace Hyv.Services
 
             if (friends.HasValue && friends.Value)
             {
-                // Filter users having at least one accepted friendship.
-                usersQuery = usersQuery.Where(u =>
-                    u.SentFriendships.Any(f => f.Status == Status.Accepted)
-                    || u.ReceivedFriendships.Any(f => f.Status == Status.Accepted)
-                );
+                usersQuery = usersQuery.Where(u => friendIds.Contains(u.Id));
             }
 
             if (nonFriends.HasValue && nonFriends.Value)
             {
-                // Filter users with no friendships.
-                usersQuery = usersQuery.Where(u =>
-                    !u.SentFriendships.Any() && !u.ReceivedFriendships.Any()
-                );
+                usersQuery = usersQuery.Where(u => !friendIds.Contains(u.Id));
             }
 
             if (categoryId.HasValue)
             {
-                // Filter users belonging to a specific friendship category.
                 usersQuery = usersQuery.Where(u =>
                     u.FriendshipCategories.Any(fc => fc.Id == categoryId.Value)
                 );
