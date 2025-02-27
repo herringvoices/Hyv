@@ -145,6 +145,7 @@ builder.Services.AddScoped<ITagalongService, TagalongService>(); // Added regist
 builder.Services.AddScoped<INotificationService, NotificationService>(); // Added registration for NotificationService
 builder.Services.AddScoped<IFriendshipCategoryService, FriendshipCategoryService>();
 builder.Services.AddScoped<ICategoryMemberService, CategoryMemberService>(); // Add this line
+builder.Services.AddScoped<IHangoutService, HangoutService>();
 
 // ✅ Register AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));

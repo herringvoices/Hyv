@@ -6,3 +6,11 @@ export const getUsersByUsername = async (query, options = {}) => {
   }
   return await response.json();
 };
+
+export const getUserById = async (userId) => {
+  const response = await fetch(`/api/user/${userId}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch user");
+  }
+  return await response.json();
+};
