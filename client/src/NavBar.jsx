@@ -26,7 +26,7 @@ const NavBar = () => {
   ];
 
   return (
-    <nav className="bg-dark text-primary  border-b-primary border-solid px-6 py-3 flex items-center justify-between">
+    <nav className="bg-dark/70 text-primary  border-b-primary border-solid px-6 py-3 flex items-center justify-between">
       {/* Logo */}
       <Link to="/" className="flex items-center">
         <img src="/images/hyv-logo.svg" alt="Hyv Logo" className="h-12 w-12" />

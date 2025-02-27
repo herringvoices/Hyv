@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { removeFriend, blockUser } from "../services/friendService";
+import { Link } from "react-router-dom";
 
 function FriendItem({ friend, setFriends }) {
   const [showModal, setShowModal] = useState(false);
@@ -40,7 +41,7 @@ function FriendItem({ friend, setFriends }) {
 
   return (
     <li className="flex justify-between items-center my-3 p-2 text-dark bg-primary rounded-md text-xl">
-      <div className="flex items-center">
+      <Link to={`/friends/${friend.id}`} className="flex items-center">
         {friend.profilePicture ? (
           <img
             src={friend.profilePicture}
@@ -54,7 +55,7 @@ function FriendItem({ friend, setFriends }) {
           <div>{friend.fullName}</div>
           <div className="text-sm">{friend.userName}</div>
         </div>
-      </div>
+      </Link>
       <div className="me-2">
         <button onClick={handleBlockClick} className="focus:outline-none">
           <FontAwesomeIcon

@@ -143,12 +143,25 @@ builder.Services.AddScoped<IFriendRequestService, FriendRequestService>(); // Ad
 builder.Services.AddScoped<IFriendService, FriendService>(); // Added registration for FriendService
 builder.Services.AddScoped<ITagalongService, TagalongService>(); // Added registration for TagalongService
 builder.Services.AddScoped<INotificationService, NotificationService>(); // Added registration for NotificationService
+builder.Services.AddScoped<IFriendshipCategoryService, FriendshipCategoryService>();
+builder.Services.AddScoped<ICategoryMemberService, CategoryMemberService>(); // Add this line
+builder.Services.AddScoped<IHangoutService, HangoutService>();
 
 // ✅ Register AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// ✅ Add Controllers
-builder.Services.AddControllers();
+// ✅ Add Controllers with JSON serialization options
+builder
+    .Services.AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.ReferenceHandler = System
+            .Text
+            .Json
+            .Serialization
+            .ReferenceHandler
+            .IgnoreCycles;
+    });
 
 // ✅ Add Swagger for API Documentation
 builder.Services.AddEndpointsApiExplorer();

@@ -33,7 +33,7 @@ function Friends() {
     <div className="mt-2 w-full h-full flex justify-center px-4 sm:px-6">
       <Tabs.Root
         defaultValue="add"
-        className="mt-2 bg-dark w-full sm:w-4/5 md:w-2/3 lg:w-1/2 xl:w-1/3 border border-primary shadow-md shadow-primary text-primary rounded-md"
+        className="mt-2 bg-dark w-full sm:w-full md:w-2/3 lg:w-1/2 xl:w-1/3 border border-primary shadow-md shadow-primary text-primary rounded-md"
       >
         <Tabs.List className="flex flex-wrap gap-2 bg-dark p-2 rounded-md">
           <Tabs.Trigger

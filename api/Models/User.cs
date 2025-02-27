@@ -38,5 +38,12 @@ namespace Hyv.Models
             new List<FriendshipCategory>();
         public virtual ICollection<WindowParticipant> WindowParticipants { get; set; } =
             new List<WindowParticipant>();
+
+        public virtual ICollection<HangoutGuest> HangoutGuests { get; set; } =
+            new List<HangoutGuest>();
+        public virtual ICollection<HangoutRequestRecipient> HangoutRequestRecipients { get; set; } =
+            new List<HangoutRequestRecipient>();
+        public virtual ICollection<JoinRequest> JoinRequests { get; set; } =
+            new List<JoinRequest>();
     }
 }

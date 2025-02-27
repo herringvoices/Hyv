@@ -4,6 +4,6 @@ namespace Hyv.DTOs
     {
         public int Id { get; set; }
         public int CategoryId { get; set; }
-        public int FriendId { get; set; }
+        public string FriendId { get; set; }
     }
 }

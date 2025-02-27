@@ -1,11 +1,13 @@
 using System.Threading.Tasks;
 using Hyv.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hyv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] // Add authorization attribute
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -37,6 +39,16 @@ namespace Hyv.Controllers
                 categoryId
             );
             return Ok(users);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetUserById(string id)
+        {
+            var user = await _userService.GetUserByIdAsync(id);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            return Ok(user);
         }
 
         [HttpDelete("delete-all")]
