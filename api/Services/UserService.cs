@@ -81,6 +81,13 @@ namespace Hyv.Services
                 .ThenInclude(cm => cm.Friend)
                 .Include(u => u.WindowParticipants)
                 .ThenInclude(wp => wp.Window)
+                // Include hangout-related entities
+                .Include(u => u.HangoutGuests)
+                .ThenInclude(hg => hg.Hangout)
+                .Include(u => u.HangoutRequestRecipients)
+                .ThenInclude(hrr => hrr.HangoutRequest)
+                .Include(u => u.JoinRequests)
+                .ThenInclude(jr => jr.Hangout)
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
             if (user == null)
@@ -124,6 +131,41 @@ namespace Hyv.Services
             userDto.FriendshipCategories =
                 user.FriendshipCategories?.Select(fc => _mapper.Map<FriendshipCategoryDto>(fc))
                 ?? Enumerable.Empty<FriendshipCategoryDto>();
+
+            // Filter hangouts by date
+            var now = DateTime.UtcNow;
+
+            // Past hangouts - completed before now
+            userDto.PastHangouts =
+                user.HangoutGuests?.Where(hg => hg.Hangout != null && hg.Hangout.ConfirmedEnd < now)
+                    .Select(hg => _mapper.Map<HangoutDto>(hg.Hangout))
+                ?? Enumerable.Empty<HangoutDto>();
+
+            // Upcoming hangouts - start after now
+            userDto.UpcomingHangouts =
+                user.HangoutGuests?.Where(hg =>
+                        hg.Hangout != null && hg.Hangout.ConfirmedStart > now
+                    )
+                    .Select(hg => _mapper.Map<HangoutDto>(hg.Hangout))
+                ?? Enumerable.Empty<HangoutDto>();
+
+            // Upcoming hangout requests - proposed start after now
+            userDto.UpcomingHangoutRequests =
+                user.HangoutRequestRecipients?.Where(hrr =>
+                        hrr.HangoutRequest != null
+                        && hrr.HangoutRequest.ProposedStart.HasValue
+                        && hrr.HangoutRequest.ProposedStart.Value > now
+                    )
+                    .Select(hrr => _mapper.Map<HangoutRequestDto>(hrr.HangoutRequest))
+                ?? Enumerable.Empty<HangoutRequestDto>();
+
+            // Upcoming join requests - related to hangouts starting after now
+            userDto.UpcomingJoinRequests =
+                user.JoinRequests?.Where(jr =>
+                        jr.Hangout != null && jr.Hangout.ConfirmedStart > now
+                    )
+                    .Select(jr => _mapper.Map<JoinRequestDto>(jr))
+                ?? Enumerable.Empty<JoinRequestDto>();
 
             return userDto;
         }

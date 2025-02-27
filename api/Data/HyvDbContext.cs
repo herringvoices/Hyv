@@ -144,7 +144,7 @@ namespace Hyv.Data
             modelBuilder
                 .Entity<JoinRequest>()
                 .HasOne(jr => jr.User)
-                .WithMany()
+                .WithMany(u => u.JoinRequests) 
                 .HasForeignKey(jr => jr.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -181,7 +181,7 @@ namespace Hyv.Data
             modelBuilder
                 .Entity<HangoutRequestRecipient>()
                 .HasOne(hrr => hrr.User)
-                .WithMany()
+                .WithMany(u => u.HangoutRequestRecipients)
                 .HasForeignKey(hrr => hrr.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -196,7 +196,7 @@ namespace Hyv.Data
             modelBuilder
                 .Entity<HangoutGuest>()
                 .HasOne(hg => hg.User)
-                .WithMany()
+                .WithMany(u => u.HangoutGuests)
                 .HasForeignKey(hg => hg.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 

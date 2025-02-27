@@ -17,5 +17,12 @@ namespace Hyv.DTOs
         public IEnumerable<FriendshipCategoryDto> FriendshipCategories { get; set; } =
             new List<FriendshipCategoryDto>();
         public IEnumerable<WindowDto> OpenWindows { get; set; } = new List<WindowDto>();
+
+        public IEnumerable<HangoutDto> PastHangouts { get; set; } = new List<HangoutDto>();
+        public IEnumerable<HangoutDto> UpcomingHangouts { get; set; } = new List<HangoutDto>();
+        public IEnumerable<HangoutRequestDto> UpcomingHangoutRequests { get; set; } =
+            new List<HangoutRequestDto>();
+        public IEnumerable<JoinRequestDto> UpcomingJoinRequests { get; set; } =
+            new List<JoinRequestDto>();
     }
 }
