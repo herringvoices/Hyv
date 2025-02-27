@@ -17,7 +17,12 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.UserName))
             .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
             .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => src.FirstName))
-            .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.LastName));
+            .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.LastName))
+            // Ignore these collections as they'll be handled manually in the service
+            .ForMember(dest => dest.Friendships, opt => opt.Ignore())
+            .ForMember(dest => dest.Tagalongs, opt => opt.Ignore())
+            .ForMember(dest => dest.FriendshipCategories, opt => opt.Ignore())
+            .ForMember(dest => dest.OpenWindows, opt => opt.Ignore());
         CreateMap<UserDto, User>();
 
         // ================================

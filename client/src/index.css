@@ -14,11 +14,11 @@
   color-scheme: light dark;
   color: theme("colors.light");
   background-color: theme("colors.dark");
-  background-image: url("/images/bkg-01.png");
-  background-size: cover;
-  background-position: top;
-  background-repeat: no-repeat;
-
+  @media (min-width: 1024px) {
+    background-image: url("/images/bkg-01.png");
+    background-size: cover;
+    background-position: top;
+  }
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
