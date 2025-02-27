@@ -19,10 +19,10 @@ export async function getCategoryById(id) {
 }
 
 export async function createCategory(name) {
-  const response = await fetch(API_BASE, {
+  const encodedName = encodeURIComponent(name);
+  const response = await fetch(`${API_BASE}?name=${encodedName}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
   });
   if (!response.ok) {
     const error = await response.text();
@@ -32,10 +32,10 @@ export async function createCategory(name) {
 }
 
 export async function updateCategory(id, name) {
-  const response = await fetch(`${API_BASE}/${id}`, {
+  const encodedName = encodeURIComponent(name);
+  const response = await fetch(`${API_BASE}/${id}?name=${encodedName}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
   });
   if (!response.ok) {
     const error = await response.text();

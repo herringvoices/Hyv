@@ -82,11 +82,11 @@ function FriendDetails() {
           onValueChange={handleAccordionValueChange}
         >
           <Accordion.Item
-            className="bg-dark/70 border w-full border-primary mt-5 shadow-md shadow-primary"
+            className="bg-dark/70 border w-full rounded-md border-primary mt-5 shadow-md shadow-primary"
             value="pending-requests"
           >
             <Accordion.Trigger className="w-full flex items-center justify-between px-4">
-              <h3 className="text-4xl my-3 text-primary">Pending Requests</h3>
+              <h3 className="text-4xl my-3 text-primary">Pending Hangout Requests</h3>
               <motion.div
                 animate={openItem === "pending-requests" ? "open" : "closed"}
                 variants={chevronVariants}
@@ -104,7 +104,7 @@ function FriendDetails() {
           </Accordion.Item>
 
           <Accordion.Item
-            className="bg-dark/70 border w-full border-primary mt-5 shadow-md shadow-primary"
+            className="bg-dark/70 border w-full rounded-md border-primary mt-5 shadow-md shadow-primary"
             value="upcoming-hangouts"
           >
             <Accordion.Trigger className="w-full flex items-center justify-between px-4">
@@ -126,7 +126,7 @@ function FriendDetails() {
           </Accordion.Item>
 
           <Accordion.Item
-            className="bg-dark/70 border w-full border-primary mt-5 shadow-md shadow-primary"
+            className="bg-dark/70 border w-full rounded-md border-primary mt-5 shadow-md shadow-primary"
             value="past-hangouts"
           >
             <Accordion.Trigger className="w-full flex items-center justify-between px-4">
