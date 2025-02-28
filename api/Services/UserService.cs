@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -17,14 +18,18 @@ namespace Hyv.Services
         Task<IEnumerable<UserDto>> GetAllUsersAsync();
         Task<bool> DeleteAllUsersAsync();
         Task<UserDto> GetUserByIdAsync(string userId);
+        Task<UserDto> UpdateUserAsync(UserUpdateDto userUpdateDto); // Added missing method
 
         // Optional filter params
         Task<IEnumerable<UserDto>> SearchUsersByUsernameAsync(
-            string query,
+            string query = null, // Make query properly optional by giving it a default value
             bool? friends = null,
             bool? nonFriends = null,
             int? categoryId = null
         );
+
+        // New dedicated method for getting users by category
+        Task<IEnumerable<UserDto>> GetUsersByCategoryIdAsync(int categoryId);
     }
 
     public class UserService : IUserService
@@ -100,13 +105,19 @@ namespace Hyv.Services
 
             userDto.Friendships = sentAcceptedFriendships.Concat(receivedAcceptedFriendships);
 
-            // 2. Filter tagalongs (both sent and received) by "Accepted" status
+            // 2. Filter tagalongs (both sent and received) by "Accepted" status AND involving current user
             var sentAcceptedTagalongs =
-                user.SentTagalongs?.Where(t => t.Status == Status.Accepted)
+                user.SentTagalongs?.Where(t =>
+                        t.Status == Status.Accepted
+                        && (t.SenderId == currentUserId || t.RecipientId == currentUserId)
+                    )
                     .Select(t => _mapper.Map<TagalongDto>(t)) ?? Enumerable.Empty<TagalongDto>();
 
             var receivedAcceptedTagalongs =
-                user.ReceivedTagalongs?.Where(t => t.Status == Status.Accepted)
+                user.ReceivedTagalongs?.Where(t =>
+                        t.Status == Status.Accepted
+                        && (t.SenderId == currentUserId || t.RecipientId == currentUserId)
+                    )
                     .Select(t => _mapper.Map<TagalongDto>(t)) ?? Enumerable.Empty<TagalongDto>();
 
             userDto.Tagalongs = sentAcceptedTagalongs.Concat(receivedAcceptedTagalongs);
@@ -142,12 +153,24 @@ namespace Hyv.Services
         }
 
         public async Task<IEnumerable<UserDto>> SearchUsersByUsernameAsync(
-            string query,
+            string query = null, // Make query properly optional by giving it a default value
             bool? friends = null,
             bool? nonFriends = null,
             int? categoryId = null
         )
         {
+            // Only check for query if no other filters are provided
+            if (
+                string.IsNullOrEmpty(query)
+                && !categoryId.HasValue
+                && !friends.HasValue
+                && !nonFriends.HasValue
+            )
+            {
+                // Return empty result if no search criteria provided
+                return new List<UserDto>();
+            }
+
             var currentUserId = _httpContextAccessor
                 .HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)
                 ?.Value;
@@ -173,11 +196,16 @@ namespace Hyv.Services
             var rejectedIds = await rejectedFromSender.Union(rejectedFromRecipient).ToListAsync();
 
             var usersQuery = _userManager
-                .Users.Where(u =>
-                    EF.Functions.Like(u.UserName.ToLower(), $"%{query.ToLower()}%")
-                    && u.Id != currentUserId
-                )
+                .Users.Where(u => u.Id != currentUserId)
                 .Where(u => !rejectedIds.Contains(u.Id));
+
+            // Only apply username filtering if query is provided and not empty
+            if (!string.IsNullOrEmpty(query))
+            {
+                usersQuery = usersQuery.Where(u =>
+                    EF.Functions.Like(u.UserName.ToLower(), $"%{query.ToLower()}%")
+                );
+            }
 
             if (friends.HasValue && friends.Value)
             {
@@ -191,13 +219,71 @@ namespace Hyv.Services
 
             if (categoryId.HasValue)
             {
-                usersQuery = usersQuery.Where(u =>
-                    u.FriendshipCategories.Any(fc => fc.Id == categoryId.Value)
-                );
+                // Fix the category filtering to find users who are members of the specified category
+                // using the correct CategoryId property name
+                var categoryMemberIds = await _context
+                    .CategoryMembers.Where(cm =>
+                        cm.CategoryId == categoryId.Value
+                        && cm.FriendshipCategory.UserId == currentUserId
+                    )
+                    .Select(cm => cm.FriendId)
+                    .ToListAsync();
+
+                usersQuery = usersQuery.Where(u => categoryMemberIds.Contains(u.Id));
             }
 
             var users = await usersQuery.ToListAsync();
             return _mapper.Map<IEnumerable<UserDto>>(users);
         }
+
+        public async Task<IEnumerable<UserDto>> GetUsersByCategoryIdAsync(int categoryId)
+        {
+            var currentUserId = _httpContextAccessor
+                .HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)
+                ?.Value;
+
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                return Enumerable.Empty<UserDto>();
+            }
+
+            // Get all friendIds who are members of this category using the correct property name
+            var categoryMemberIds = await _context
+                .CategoryMembers.Where(cm =>
+                    cm.CategoryId == categoryId && cm.FriendshipCategory.UserId == currentUserId
+                )
+                .Select(cm => cm.FriendId)
+                .ToListAsync();
+
+            if (categoryMemberIds.Count == 0)
+            {
+                return Enumerable.Empty<UserDto>();
+            }
+
+            // Get the actual users
+            var users = await _userManager
+                .Users.Where(u => categoryMemberIds.Contains(u.Id))
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<UserDto>>(users);
+        }
+
+        public async Task<UserDto> UpdateUserAsync(UserUpdateDto userUpdateDto)
+        {
+            var user = await _userManager.FindByIdAsync(userUpdateDto.Id);
+            if (user == null)
+                return null;
+
+            // Only update name fields
+            user.FirstName = userUpdateDto.FirstName ?? user.FirstName;
+            user.LastName = userUpdateDto.LastName ?? user.LastName;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+                return null;
+
+            return await GetUserByIdAsync(user.Id);
+        }
     }
 }
+

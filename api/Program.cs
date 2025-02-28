@@ -12,6 +12,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
+
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ✅ Load .env file (only in development)
@@ -193,3 +196,4 @@ app.UseAuthorization(); // Remove the UseWhen wrapper
 app.MapControllers();
 
 app.Run();
+

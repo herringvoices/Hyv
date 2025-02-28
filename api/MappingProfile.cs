@@ -48,8 +48,12 @@ public class MappingProfile : Profile
         CreateMap<CategoryMemberDto, CategoryMember>();
 
         CreateMap<Tagalong, TagalongDto>()
+            .ForMember(dest => dest.SenderId, opt => opt.MapFrom(src => src.SenderId))
+            .ForMember(dest => dest.RecipientId, opt => opt.MapFrom(src => src.RecipientId))
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
         CreateMap<TagalongDto, Tagalong>()
+            .ForMember(dest => dest.SenderId, opt => opt.MapFrom(src => src.SenderId))
+            .ForMember(dest => dest.RecipientId, opt => opt.MapFrom(src => src.RecipientId))
             .ForMember(
                 dest => dest.Status,
                 opt => opt.MapFrom(src => Enum.Parse<Status>(src.Status))

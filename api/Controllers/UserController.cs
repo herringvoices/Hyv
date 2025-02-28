@@ -1,4 +1,7 @@
+using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Hyv.DTOs;
 using Hyv.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,19 +29,26 @@ namespace Hyv.Controllers
 
         [HttpGet("search")]
         public async Task<IActionResult> SearchUsers(
-            [FromQuery] string query,
-            [FromQuery] bool? friends,
-            [FromQuery] bool? nonFriends,
-            [FromQuery] int? categoryId
+            [FromQuery] string query = null, // Make query optional with a default value
+            [FromQuery] bool? friends = null,
+            [FromQuery] bool? nonFriends = null,
+            [FromQuery] int? categoryId = null
         )
         {
-            var users = await _userService.SearchUsersByUsernameAsync(
-                query,
-                friends,
-                nonFriends,
-                categoryId
-            );
-            return Ok(users);
+            try
+            {
+                var users = await _userService.SearchUsersByUsernameAsync(
+                    query,
+                    friends,
+                    nonFriends,
+                    categoryId
+                );
+                return Ok(users);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpGet("{id}")]
@@ -51,6 +61,20 @@ namespace Hyv.Controllers
             return Ok(user);
         }
 
+        [HttpGet("category/{categoryId}")]
+        public async Task<IActionResult> GetUsersByCategory(int categoryId)
+        {
+            try
+            {
+                var users = await _userService.GetUsersByCategoryIdAsync(categoryId);
+                return Ok(users);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpDelete("delete-all")]
         public async Task<IActionResult> DeleteAllUsers()
         {
@@ -59,6 +83,54 @@ namespace Hyv.Controllers
                 return Ok(new { message = "All users deleted successfully." });
             else
                 return BadRequest(new { message = "Failed to delete users." });
+        }
+
+        [HttpGet("current")]
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new { message = "User not authenticated" });
+            }
+
+            var user = await _userService.GetUserByIdAsync(userId);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            return Ok(user);
+        }
+
+        [HttpPut("update")]
+        public async Task<IActionResult> UpdateUser([FromBody] UserUpdateDto userDto)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId) || userDto.Id != userId)
+            {
+                return Unauthorized(new { message = "Unauthorized to update this user" });
+            }
+
+            var updatedUser = await _userService.UpdateUserAsync(userDto);
+            if (updatedUser == null)
+                return NotFound(new { message = "User not found" });
+
+            return Ok(updatedUser);
+        }
+
+        [HttpPut("update-name")]
+        public async Task<IActionResult> UpdateUserName([FromBody] UserUpdateDto userDto)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId) || userDto.Id != userId)
+            {
+                return Unauthorized(new { message = "Unauthorized to update this user" });
+            }
+
+            var updatedUser = await _userService.UpdateUserAsync(userDto);
+            if (updatedUser == null)
+                return NotFound(new { message = "User not found" });
+
+            return Ok(updatedUser);
         }
     }
 }

@@ -3,6 +3,7 @@ import NavBar from "./NavBar";
 import Logout from "./pages/Logout";
 import Friends from "./pages/Friends";
 import FriendDetails from "./pages/FriendDetails";
+import Profile from "./pages/Profile";
 
 function ApplicationViews() {
   return (
@@ -25,6 +26,7 @@ function ApplicationViews() {
           <Route path=":friendId" element={<FriendDetails />} />
         </Route>
         <Route path="hangouts" element={<div>Hangouts Placeholder</div>} />
+        <Route path="profile" element={<Profile />} />
       </Route>
       <Route path="/logout" element={<Logout />} />
       <Route path="*" element={<div>404 Not Found</div>} />
