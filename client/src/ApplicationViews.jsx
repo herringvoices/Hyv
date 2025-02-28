@@ -4,6 +4,7 @@ import Logout from "./pages/Logout";
 import Friends from "./pages/Friends";
 import FriendDetails from "./pages/FriendDetails";
 import Profile from "./pages/Profile";
+import Welcome from "./pages/Welcome";
 
 function ApplicationViews() {
   return (
@@ -19,6 +20,7 @@ function ApplicationViews() {
           </>
         }
       >
+        <Route index element={<Welcome />} />
         <Route path="windows" element={<div>Windows Placeholder</div>} />
         <Route path="hive" element={<div>Hive Placeholder</div>} />
         <Route path="friends">
