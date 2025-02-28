@@ -21,6 +21,15 @@ namespace Hyv.Services
 
         // Add the missing method to remove a specific tagalong
         Task<bool> RemoveTagalongAsync(int tagalongId);
+
+        // Add new method to remove all tagalongs between two users
+        Task<bool> RemoveTagalongsBetweenUsersAsync(string userId1, string userId2);
+
+        // Add new method to find tagalongs between users
+        Task<IEnumerable<int>> GetTagalongIdsBetweenUsersAsync(string userId1, string userId2);
+
+        // Add new method to check if a tagalong exists between users
+        Task<bool> HasTagalongWithUserAsync(string userId);
     }
 
     public class TagalongService : ITagalongService
@@ -121,22 +130,75 @@ namespace Hyv.Services
         public async Task<bool> RemoveTagalongAsync(int tagalongId)
         {
             var currentUserId = _httpContextAccessor
-                .HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)
+                .HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)
                 ?.Value;
 
-            if (string.IsNullOrEmpty(currentUserId))
-                return false;
-
-            var tagalong = await _context.Tagalongs.FirstOrDefaultAsync(t =>
-                t.Id == tagalongId
-                && (t.SenderId == currentUserId || t.RecipientId == currentUserId)
-            );
+            var tagalong = await _context.Tagalongs.FindAsync(tagalongId);
 
             if (tagalong == null)
                 return false;
 
+            // If currentUserId is provided, verify permissions
+            if (
+                !string.IsNullOrEmpty(currentUserId)
+                && tagalong.SenderId != currentUserId
+                && tagalong.RecipientId != currentUserId
+            )
+                return false;
+
             _context.Tagalongs.Remove(tagalong);
             return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> RemoveTagalongsBetweenUsersAsync(string userId1, string userId2)
+        {
+            if (string.IsNullOrEmpty(userId1) || string.IsNullOrEmpty(userId2))
+                return false;
+
+            var tagalongs = await _context
+                .Tagalongs.Where(t =>
+                    (t.SenderId == userId1 && t.RecipientId == userId2)
+                    || (t.SenderId == userId2 && t.RecipientId == userId1)
+                )
+                .ToListAsync();
+
+            if (!tagalongs.Any())
+                return true; // No tagalongs found is still a success
+
+            _context.Tagalongs.RemoveRange(tagalongs);
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<IEnumerable<int>> GetTagalongIdsBetweenUsersAsync(
+            string userId1,
+            string userId2
+        )
+        {
+            if (string.IsNullOrEmpty(userId1) || string.IsNullOrEmpty(userId2))
+                return new List<int>();
+
+            return await _context
+                .Tagalongs.Where(t =>
+                    (t.SenderId == userId1 && t.RecipientId == userId2)
+                    || (t.SenderId == userId2 && t.RecipientId == userId1)
+                )
+                .Select(t => t.Id)
+                .ToListAsync();
+        }
+
+        public async Task<bool> HasTagalongWithUserAsync(string userId)
+        {
+            var currentUserId = _httpContextAccessor
+                .HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)
+                ?.Value;
+
+            if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(userId))
+                return false;
+
+            return await _context.Tagalongs.AnyAsync(t =>
+                (t.SenderId == currentUserId && t.RecipientId == userId)
+                || (t.SenderId == userId && t.RecipientId == currentUserId)
+            );
         }
     }
 }

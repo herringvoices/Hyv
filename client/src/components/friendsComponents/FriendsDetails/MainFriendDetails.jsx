@@ -11,7 +11,10 @@ import {
   addUserToCategory,
   removeUserFromCategory,
 } from "../../../services/categoryMemberService";
-import { sendTagalongRequest } from "../../../services/tagalongService";
+import {
+  sendTagalongRequest,
+  checkTagalongExists,
+} from "../../../services/tagalongService";
 import CategoryManagementModal from "./FriendDetailsModals/CategoryManagementModal";
 import NewCategoryModal from "./FriendDetailsModals/NewCategoryModal";
 import DeleteCategoryModal from "./FriendDetailsModals/DeleteCategoryModal";
@@ -35,6 +38,9 @@ function MainFriendDetails({ friend }) {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [editCategoryName, setEditCategoryName] = useState("");
 
+  // New state to track tagalong existence
+  const [tagalongExists, setTagalongExists] = useState(false);
+
   // Fetch all categories on component mount
   useEffect(() => {
     fetchCategories();
@@ -53,6 +59,17 @@ function MainFriendDetails({ friend }) {
   useEffect(() => {
     if (friend && friend.friendshipCategories) {
       setActiveCategories(friend.friendshipCategories);
+    }
+  }, [friend]);
+
+  // Check if a tagalong exists with this friend
+  useEffect(() => {
+    if (friend && friend.id) {
+      checkTagalongExists(friend.id)
+        .then((exists) => setTagalongExists(exists))
+        .catch((error) =>
+          console.error("Error checking tagalong status:", error)
+        );
     }
   }, [friend]);
 
@@ -143,6 +160,7 @@ function MainFriendDetails({ friend }) {
     try {
       await sendTagalongRequest(friend.id);
       setTagalongModalOpen(false);
+      setTagalongExists(true); // Update the state after successfully sending a tagalong request
       // You could add a success notification here
     } catch (error) {
       console.error("Error sending tagalong request:", error);
@@ -194,7 +212,8 @@ function MainFriendDetails({ friend }) {
         ))}
       </div>
 
-      {friend.tagalongs && friend.tagalongs.length === 0 && (
+      {/* Replace the existing ternary with a condition based on tagalongExists */}
+      {!tagalongExists && (
         <div className="ms-2 md:ms-5 mt-4">
           <button
             onClick={() => setTagalongModalOpen(true)}

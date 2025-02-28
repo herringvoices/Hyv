@@ -69,3 +69,14 @@ export const removeTagalong = async (tagalongId) => {
   }
   return await response.json();
 };
+
+export async function checkTagalongExists(userId) {
+  const response = await fetch(`${API_BASE}/exists?userId=${userId}`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Error checking tagalong status:", errorText);
+    throw new Error(`Failed to check tagalong status: ${response.status}`);
+  }
+  const data = await response.json();
+  return data.exists;
+}

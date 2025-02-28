@@ -24,16 +24,19 @@ namespace Hyv.Services
         private readonly HyvDbContext _context;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IMapper _mapper;
+        private readonly ITagalongService _tagalongService;
 
         public FriendService(
             HyvDbContext context,
             IHttpContextAccessor httpContextAccessor,
-            IMapper mapper
+            IMapper mapper,
+            ITagalongService tagalongService
         )
         {
             _context = context;
             _httpContextAccessor = httpContextAccessor;
             _mapper = mapper;
+            _tagalongService = tagalongService;
         }
 
         public async Task<IEnumerable<UserDto>> GetFriendsAsync(string search)
@@ -89,6 +92,16 @@ namespace Hyv.Services
             if (friendship == null)
                 return false;
 
+            // Remove any tagalongs between these users
+            var tagalongIds = await _tagalongService.GetTagalongIdsBetweenUsersAsync(
+                currentUserId,
+                friendId
+            );
+            foreach (var tagalongId in tagalongIds)
+            {
+                await _tagalongService.RemoveTagalongAsync(tagalongId);
+            }
+
             _context.Friendships.Remove(friendship);
             return await _context.SaveChangesAsync() > 0;
         }
@@ -100,6 +113,16 @@ namespace Hyv.Services
                 ?.Value;
             if (string.IsNullOrEmpty(currentUserId) || currentUserId == userIdToBlock)
                 return false;
+
+            // Remove any tagalongs between these users
+            var tagalongIds = await _tagalongService.GetTagalongIdsBetweenUsersAsync(
+                currentUserId,
+                userIdToBlock
+            );
+            foreach (var tagalongId in tagalongIds)
+            {
+                await _tagalongService.RemoveTagalongAsync(tagalongId);
+            }
 
             var friendship = await _context.Friendships.FirstOrDefaultAsync(f =>
                 (f.SenderId == currentUserId && f.RecipientId == userIdToBlock)
