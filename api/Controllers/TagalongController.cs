@@ -69,6 +69,17 @@ namespace Hyv.Controllers
 
             return Ok(new { message = "Tagalong removed successfully." });
         }
+
+        // Add endpoint to check if a tagalong exists with another user
+        [HttpGet("exists")]
+        public async Task<IActionResult> CheckTagalongExists([FromQuery] string userId)
+        {
+            if (string.IsNullOrEmpty(userId))
+                return BadRequest(new { message = "UserId is required." });
+
+            bool exists = await _tagalongService.HasTagalongWithUserAsync(userId);
+            return Ok(new { exists });
+        }
     }
 
     public class SendTagalongDto
