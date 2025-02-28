@@ -16,14 +16,22 @@ function Pending({ refreshNotifications }) {
   const { relationshipNotifications } = useContext(UserContext);
 
   const fetchPendingRequests = async () => {
+    // Fetch friend requests
     try {
       const friendRequests = await getPendingFriendRequests(false);
       setPendingFriendRequests(friendRequests);
+    } catch (error) {
+      console.error("Error fetching friend requests:", error);
+      setPendingFriendRequests([]);
+    }
 
+    // Fetch tagalong requests separately
+    try {
       const tagalongs = await getPendingTagalongs(false); // false = user is recipient
       setPendingTagalongs(tagalongs);
     } catch (error) {
-      console.error("Error fetching pending requests:", error);
+      console.error("Error fetching tagalong requests:", error);
+      setPendingTagalongs([]);
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Dialog, Checkbox } from "radix-ui";
+import { Dialog } from "radix-ui";
 import {
   getAllCategories,
   createCategory,
@@ -11,16 +11,25 @@ import {
   addUserToCategory,
   removeUserFromCategory,
 } from "../../../services/categoryMemberService";
+import { sendTagalongRequest } from "../../../services/tagalongService";
+import CategoryManagementModal from "./FriendDetailsModals/CategoryManagementModal";
+import NewCategoryModal from "./FriendDetailsModals/NewCategoryModal";
+import DeleteCategoryModal from "./FriendDetailsModals/DeleteCategoryModal";
+import EditCategoryModal from "./FriendDetailsModals/EditCategoryModal";
+import TagalongRequestModal from "./FriendDetailsModals/TagalongRequestModal";
 
 function MainFriendDetails({ friend }) {
   const [categories, setCategories] = useState([]);
   const [activeCategories, setActiveCategories] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // New states for additional modals
+  // Modal states
   const [newCategoryModalOpen, setNewCategoryModalOpen] = useState(false);
   const [deleteCategoryModalOpen, setDeleteCategoryModalOpen] = useState(false);
   const [editCategoryModalOpen, setEditCategoryModalOpen] = useState(false);
+  const [tagalongModalOpen, setTagalongModalOpen] = useState(false);
+
+  // Modal data
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [categoryToEdit, setCategoryToEdit] = useState(null);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -129,29 +138,44 @@ function MainFriendDetails({ friend }) {
     }
   };
 
+  // Handle tagalong request
+  const handleTagalongRequest = async () => {
+    try {
+      await sendTagalongRequest(friend.id);
+      setTagalongModalOpen(false);
+      // You could add a success notification here
+    } catch (error) {
+      console.error("Error sending tagalong request:", error);
+      // You could add an error notification here
+    }
+  };
+
   return (
-    <div className="w-1/3 h-screen bg-primary">
+    <div className="w-full md:w-1/3 h-auto min-h-screen bg-primary p-4">
       <div className="w-full flex flex-col">
         {friend.profilePicture ? (
           <img
             src={friend.profilePicture}
             alt={`${friend.fullName}'s profile`}
-            className="w-1/3 rounded-full mx-auto mt-8"
+            className="w-1/2 md:w-1/3 rounded-full mx-auto mt-4 md:mt-8"
           />
         ) : (
           <FontAwesomeIcon
-            className="mx-auto text-dark mt-8 size-56"
+            className="mx-auto text-dark mt-4 md:mt-8 size-32 md:size-56"
             icon="fa-solid fa-user"
           />
         )}
       </div>
-      <div className="text-start text-dark font-bold text-5xl mt-4 ms-5">
+      <div className="text-start text-dark font-bold text-3xl md:text-5xl mt-4 ms-2 md:ms-5">
         {friend.fullName}
+        {friend.tagalongs && friend.tagalongs.length > 0 && (
+          <FontAwesomeIcon className="ms-2" icon="fa-solid fa-tags" />
+        )}
       </div>
-      <div className="text-start text-secondary text-3xl ms-5">
+      <div className="text-start text-secondary text-xl md:text-3xl ms-2 md:ms-5">
         {friend.userName}
       </div>
-      <div className="mt-8 text-dark text-xl font-bold ms-5">
+      <div className="mt-4 md:mt-8 text-dark text-lg md:text-xl font-bold ms-2 md:ms-5">
         Categories
         <FontAwesomeIcon
           className="ms-2 cursor-pointer"
@@ -159,216 +183,76 @@ function MainFriendDetails({ friend }) {
           onClick={() => setModalOpen(true)}
         />
       </div>
-      <div className="ms-5 mt-2">
+      <div className="ms-2 md:ms-5 mt-2 flex flex-wrap">
         {activeCategories.map((cat) => (
           <span
             key={cat.id}
-            className="px-2 py-1 mx-2 bg-dark rounded-lg text-light"
+            className="px-2 py-1 m-1 md:mx-2 bg-dark rounded-lg text-light text-sm md:text-base"
           >
             {cat.name}
           </span>
         ))}
       </div>
 
-      {/* Main Categories Edit Modal */}
-      <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 border border-primary shadow-lg shadow-primary transform -translate-x-1/2 -translate-y-3/4 bg-dark/90 p-6 rounded-lg w-150">
-            <Dialog.Title className="text-2xl font-bold text-primary mb-4 flex items-center">
-              Edit Categories
-              <FontAwesomeIcon
-                icon="fa-solid fa-square-plus"
-                className="ms-3 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-300"
-                onClick={() => setNewCategoryModalOpen(true)}
-              />
-            </Dialog.Title>
-            <Dialog.Description className="mb-2">
-              Select the categories you'd like to apply to this friend.
-            </Dialog.Description>
-            <div className="max-h-60 overflow-y-auto">
-              {categories.map((category) => (
-                <div key={category.id} className="flex items-center mb-3">
-                  <Checkbox.Root
-                    className="flex h-5 w-5 items-center justify-center rounded-sm border-sm border-dark bg-light mr-3"
-                    checked={isCategoryActive(category.id)}
-                    onCheckedChange={(checked) =>
-                      handleCategoryToggle(category.id, checked)
-                    }
-                    id={`category-${category.id}`}
-                  >
-                    <Checkbox.Indicator>
-                      <FontAwesomeIcon
-                        icon="fa-solid fa-check"
-                        className="text-dark drop-shadow"
-                      />
-                    </Checkbox.Indicator>
-                  </Checkbox.Root>
-                  <label
-                    htmlFor={`category-${category.id}`}
-                    className="text-light font-bold cursor-pointer"
-                  >
-                    {category.name}<FontAwesomeIcon
-                      icon="fa-solid fa-pen-to-square"
-                      className="ms-2 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-300"
-                      onClick={() => {
-                        setCategoryToEdit(category);
-                        setEditCategoryName(category.name);
-                        setEditCategoryModalOpen(true);
-                      }}
-                    />
-                    <FontAwesomeIcon
-                      icon="fa-solid fa-trash-can"
-                      className="ms-2 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-300"
-                      onClick={() => {
-                        setCategoryToDelete(category);
-                        setDeleteCategoryModalOpen(true);
-                      }}
-                    />
-                  </label>
-                  
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setModalOpen(false)}
-                className="px-4 py-2 bg-primary text-dark rounded hover:bg-primary/80"
-              >
-                Close
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      {friend.tagalongs && friend.tagalongs.length === 0 && (
+        <div className="ms-2 md:ms-5 mt-4">
+          <button
+            onClick={() => setTagalongModalOpen(true)}
+            className="px-3 py-1 md:px-4 md:py-2 bg-dark text-light rounded hover:bg-dark/80 text-sm md:text-base"
+          >
+            Add as Tagalong
+          </button>
+        </div>
+      )}
 
-      {/* New Category Modal */}
-      <Dialog.Root
-        open={newCategoryModalOpen}
+      {/* Modals - now using imported components */}
+      <CategoryManagementModal
+        isOpen={modalOpen}
+        onOpenChange={setModalOpen}
+        categories={categories}
+        isCategoryActive={isCategoryActive}
+        handleCategoryToggle={handleCategoryToggle}
+        onNewCategory={() => setNewCategoryModalOpen(true)}
+        onEditCategory={(category) => {
+          setCategoryToEdit(category);
+          setEditCategoryName(category.name);
+          setEditCategoryModalOpen(true);
+        }}
+        onDeleteCategory={(category) => {
+          setCategoryToDelete(category);
+          setDeleteCategoryModalOpen(true);
+        }}
+      />
+
+      <NewCategoryModal
+        isOpen={newCategoryModalOpen}
         onOpenChange={setNewCategoryModalOpen}
-      >
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 border border-primary shadow-lg shadow-primary transform -translate-x-1/2 -translate-y-1/2 bg-dark/90 p-6 rounded-lg w-96">
-            <Dialog.Title className="text-xl font-bold text-primary mb-4">
-              Create New Category
-            </Dialog.Title>
-            <form onSubmit={handleCreateCategory}>
-              <div className="mb-4">
-                <label htmlFor="categoryName" className="block text-light mb-2">
-                  Category Name
-                </label>
-                <input
-                  type="text"
-                  id="categoryName"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  className="w-full p-2 rounded bg-light text-dark"
-                  required
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setNewCategoryModalOpen(false)}
-                  className="px-3 py-1 bg-dark text-light border border-light rounded hover:bg-dark/80"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-3 py-1 bg-primary text-dark rounded hover:bg-primary/80"
-                  disabled={!newCategoryName.trim()}
-                >
-                  Create
-                </button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+        categoryName={newCategoryName}
+        onCategoryNameChange={setNewCategoryName}
+        onSubmit={handleCreateCategory}
+      />
 
-      {/* Delete Category Confirmation Modal */}
-      <Dialog.Root
-        open={deleteCategoryModalOpen}
+      <DeleteCategoryModal
+        isOpen={deleteCategoryModalOpen}
         onOpenChange={setDeleteCategoryModalOpen}
-      >
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 border border-primary shadow-lg shadow-primary transform -translate-x-1/2 -translate-y-1/2 bg-dark/90 p-6 rounded-lg w-96">
-            <Dialog.Title className="text-xl font-bold text-primary mb-4">
-              Confirm Deletion
-            </Dialog.Title>
-            <p className="text-light mb-6">
-              Are you sure you want to delete the category "
-              {categoryToDelete?.name}"? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setDeleteCategoryModalOpen(false)}
-                className="px-3 py-1 bg-dark text-light border border-light rounded hover:bg-dark/80"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteCategory}
-                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+        category={categoryToDelete}
+        onDelete={handleDeleteCategory}
+      />
 
-      {/* Edit Category Modal */}
-      <Dialog.Root
-        open={editCategoryModalOpen}
+      <EditCategoryModal
+        isOpen={editCategoryModalOpen}
         onOpenChange={setEditCategoryModalOpen}
-      >
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 border border-primary shadow-lg shadow-primary transform -translate-x-1/2 -translate-y-1/2 bg-dark/90 p-6 rounded-lg w-96">
-            <Dialog.Title className="text-xl font-bold text-primary mb-4">
-              Edit Category
-            </Dialog.Title>
-            <form onSubmit={handleEditCategory}>
-              <div className="mb-4">
-                <label
-                  htmlFor="editCategoryName"
-                  className="block text-light mb-2"
-                >
-                  Category Name
-                </label>
-                <input
-                  type="text"
-                  id="editCategoryName"
-                  value={editCategoryName}
-                  onChange={(e) => setEditCategoryName(e.target.value)}
-                  className="w-full p-2 rounded bg-light text-dark"
-                  required
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditCategoryModalOpen(false)}
-                  className="px-3 py-1 bg-dark text-light border border-light rounded hover:bg-dark/80"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-3 py-1 bg-primary text-dark rounded hover:bg-primary/80"
-                  disabled={!editCategoryName.trim()}
-                >
-                  Update
-                </button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+        categoryName={editCategoryName}
+        onCategoryNameChange={setEditCategoryName}
+        onSubmit={handleEditCategory}
+      />
+
+      <TagalongRequestModal
+        isOpen={tagalongModalOpen}
+        onOpenChange={setTagalongModalOpen}
+        friendName={friend.fullName}
+        onConfirm={handleTagalongRequest}
+      />
     </div>
   );
 }

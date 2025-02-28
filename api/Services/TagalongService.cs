@@ -18,6 +18,9 @@ namespace Hyv.Services
         Task<IEnumerable<TagalongDto>> GetPendingTagalongRequestsAsync(bool? userIsSender = null);
         Task<bool> DeleteAllTagalongRequestsAsync();
         Task<bool> RespondToTagalongRequestAsync(int requestId, string status);
+
+        // Add the missing method to remove a specific tagalong
+        Task<bool> RemoveTagalongAsync(int tagalongId);
     }
 
     public class TagalongService : ITagalongService
@@ -112,6 +115,27 @@ namespace Hyv.Services
                 return false;
 
             _context.Tagalongs.Update(tagalong);
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> RemoveTagalongAsync(int tagalongId)
+        {
+            var currentUserId = _httpContextAccessor
+                .HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)
+                ?.Value;
+
+            if (string.IsNullOrEmpty(currentUserId))
+                return false;
+
+            var tagalong = await _context.Tagalongs.FirstOrDefaultAsync(t =>
+                t.Id == tagalongId
+                && (t.SenderId == currentUserId || t.RecipientId == currentUserId)
+            );
+
+            if (tagalong == null)
+                return false;
+
+            _context.Tagalongs.Remove(tagalong);
             return await _context.SaveChangesAsync() > 0;
         }
     }

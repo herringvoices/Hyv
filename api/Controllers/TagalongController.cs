@@ -1,11 +1,13 @@
 using System.Threading.Tasks;
 using Hyv.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hyv.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] // Ensure all endpoints are secured
     public class TagalongController : ControllerBase
     {
         private readonly ITagalongService _tagalongService;
@@ -55,6 +57,17 @@ namespace Hyv.Controllers
             if (!result)
                 return BadRequest(new { message = "Unable to respond to tagalong request." });
             return Ok(new { message = "Tagalong request response recorded." });
+        }
+
+        // Add the missing endpoint to remove a specific tagalong
+        [HttpDelete("{tagalongId}")]
+        public async Task<IActionResult> RemoveTagalong(int tagalongId)
+        {
+            var result = await _tagalongService.RemoveTagalongAsync(tagalongId);
+            if (!result)
+                return BadRequest(new { message = "Failed to remove tagalong." });
+
+            return Ok(new { message = "Tagalong removed successfully." });
         }
     }
 

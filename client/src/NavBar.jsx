@@ -97,19 +97,18 @@ const NavBar = () => {
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
             <button className="flex items-center gap-2 text-primary hover:text-secondary">
-              <Avatar.Root className="w-8 h-8 rounded-full bg-secondary">
+              <Avatar.Root className="w-8 h-8 rounded-full bg-primary">
                 <Avatar.Image
                   className="w-full h-full rounded-full"
-                  src={
-                    loggedInUser?.profilePicture || "/path-to-default-pic.jpg"
-                  } // Use loggedInUser profile image
+                  src={loggedInUser?.profilePicture || ""}
                   alt="Profile"
                 />
-                <Avatar.Fallback className="text-light">?</Avatar.Fallback>
+                <Avatar.Fallback className="text-dark"><FontAwesomeIcon  icon="fa-solid fa-user" />
+                </Avatar.Fallback>
               </Avatar.Root>
               <span className="text-light">
                 <span className="block">{loggedInUser?.firstName}</span>
-                <span className="block text-xs text-secondary">
+                <span className="block text-xs text-primary">
                   {loggedInUser?.userName}
                 </span>
               </span>

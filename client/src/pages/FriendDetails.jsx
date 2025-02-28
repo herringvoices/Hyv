@@ -69,24 +69,26 @@ function FriendDetails() {
   }
 
   return (
-    <div className="flex w-full h-full">
+    <div className="flex flex-col md:flex-row w-full h-full">
       {/* Main Content */}
       <MainFriendDetails friend={friend} />
 
       {/* Hangouts Content (To be implemented later) */}
-      <div className="w-2/3 text-center h-screen">
+      <div className="w-full md:w-2/3 text-center h-auto md:h-screen py-4 md:py-0">
         <Accordion.Root
-          className="w-4/5 mx-auto"
+          className="w-11/12 md:w-4/5 mx-auto"
           type="single"
           collapsible
           onValueChange={handleAccordionValueChange}
         >
           <Accordion.Item
-            className="bg-dark/70 border w-full rounded-md border-primary mt-5 shadow-md shadow-primary"
+            className="bg-dark/70 border w-full rounded-md border-primary mt-3 md:mt-5 shadow-md shadow-primary"
             value="pending-requests"
           >
-            <Accordion.Trigger className="w-full flex items-center justify-between px-4">
-              <h3 className="text-4xl my-3 text-primary">Pending Hangout Requests</h3>
+            <Accordion.Trigger className="w-full flex items-center justify-between px-3 md:px-4">
+              <h3 className="text-2xl md:text-4xl my-2 md:my-3 text-primary">
+                Pending Hangout Requests
+              </h3>
               <motion.div
                 animate={openItem === "pending-requests" ? "open" : "closed"}
                 variants={chevronVariants}
@@ -94,21 +96,23 @@ function FriendDetails() {
               >
                 <FontAwesomeIcon
                   icon="fa-solid fa-circle-chevron-down"
-                  className="text-primary text-2xl"
+                  className="text-primary text-xl md:text-2xl"
                 />
               </motion.div>
             </Accordion.Trigger>
-            <Accordion.Content>
+            <Accordion.Content className="px-2 py-2">
               <p>This feature has yet to be implemented</p>
             </Accordion.Content>
           </Accordion.Item>
 
           <Accordion.Item
-            className="bg-dark/70 border w-full rounded-md border-primary mt-5 shadow-md shadow-primary"
+            className="bg-dark/70 border w-full rounded-md border-primary mt-3 md:mt-5 shadow-md shadow-primary"
             value="upcoming-hangouts"
           >
-            <Accordion.Trigger className="w-full flex items-center justify-between px-4">
-              <h3 className="text-4xl my-3 text-primary">Upcoming Hangouts</h3>
+            <Accordion.Trigger className="w-full flex items-center justify-between px-3 md:px-4">
+              <h3 className="text-2xl md:text-4xl my-2 md:my-3 text-primary">
+                Upcoming Hangouts
+              </h3>
               <motion.div
                 animate={openItem === "upcoming-hangouts" ? "open" : "closed"}
                 variants={chevronVariants}
@@ -116,21 +120,23 @@ function FriendDetails() {
               >
                 <FontAwesomeIcon
                   icon="fa-solid fa-circle-chevron-down"
-                  className="text-primary text-2xl"
+                  className="text-primary text-xl md:text-2xl"
                 />
               </motion.div>
             </Accordion.Trigger>
-            <Accordion.Content>
+            <Accordion.Content className="px-2 py-2">
               <p>This feature has yet to be implemented</p>
             </Accordion.Content>
           </Accordion.Item>
 
           <Accordion.Item
-            className="bg-dark/70 border w-full rounded-md border-primary mt-5 shadow-md shadow-primary"
+            className="bg-dark/70 border w-full rounded-md border-primary mt-3 md:mt-5 shadow-md shadow-primary"
             value="past-hangouts"
           >
-            <Accordion.Trigger className="w-full flex items-center justify-between px-4">
-              <h3 className="text-4xl my-3 text-primary">Past Hangouts</h3>
+            <Accordion.Trigger className="w-full flex items-center justify-between px-3 md:px-4">
+              <h3 className="text-2xl md:text-4xl my-2 md:my-3 text-primary">
+                Past Hangouts
+              </h3>
               <motion.div
                 animate={openItem === "past-hangouts" ? "open" : "closed"}
                 variants={chevronVariants}
@@ -138,11 +144,11 @@ function FriendDetails() {
               >
                 <FontAwesomeIcon
                   icon="fa-solid fa-circle-chevron-down"
-                  className="text-primary text-2xl"
+                  className="text-primary text-xl md:text-2xl"
                 />
               </motion.div>
             </Accordion.Trigger>
-            <Accordion.Content>
+            <Accordion.Content className="px-2 py-2">
               <p>This feature has yet to be implemented</p>
             </Accordion.Content>
           </Accordion.Item>
