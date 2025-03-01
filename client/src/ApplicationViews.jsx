@@ -5,6 +5,7 @@ import Friends from "./pages/Friends";
 import FriendDetails from "./pages/FriendDetails";
 import Profile from "./pages/Profile";
 import Welcome from "./pages/Welcome";
+import Windows from "./pages/Windows";
 
 function ApplicationViews() {
   return (
@@ -21,7 +22,7 @@ function ApplicationViews() {
         }
       >
         <Route index element={<Welcome />} />
-        <Route path="windows" element={<div>Windows Placeholder</div>} />
+        <Route path="windows" element={<Windows />} />
         <Route path="hive" element={<div>Hive Placeholder</div>} />
         <Route path="friends">
           <Route index element={<Friends />} />
