@@ -5,7 +5,9 @@ namespace Hyv.DTOs
         public int Id { get; set; }
         public int WindowId { get; set; }
         public string? UserId { get; set; }
-        public WindowDto? Window { get; set; }
+
+        // Remove circular reference to Window
+        // public WindowDto? Window { get; set; }
         public UserDto? User { get; set; }
     }
 }
