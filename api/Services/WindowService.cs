@@ -71,6 +71,31 @@ namespace Hyv.Services
                 }
             }
 
+            // Initialize WindowVisibilities collection if it doesn't exist
+            if (window.WindowVisibilities == null)
+            {
+                window.WindowVisibilities = new List<WindowVisibility>();
+            }
+
+            // Add visibilities from the DTO
+            if (windowDto.ExtendedProps?.Visibilities != null)
+            {
+                foreach (var visibility in windowDto.ExtendedProps.Visibilities)
+                {
+                    if (
+                        visibility.CategoryId > 0
+                        && !window.WindowVisibilities.Any(wv =>
+                            wv.CategoryId == visibility.CategoryId
+                        )
+                    )
+                    {
+                        window.WindowVisibilities.Add(
+                            new WindowVisibility { CategoryId = visibility.CategoryId }
+                        );
+                    }
+                }
+            }
+
             // Add the window to the database
             _dbContext.Windows.Add(window);
             await _dbContext.SaveChangesAsync();

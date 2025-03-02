@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Hyv.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -79,6 +80,24 @@ namespace Hyv.Controllers
 
             bool exists = await _tagalongService.HasTagalongWithUserAsync(userId);
             return Ok(new { exists });
+        }
+
+        // Add endpoint to get accepted tagalongs
+        [HttpGet("accepted")]
+        public async Task<IActionResult> GetAcceptedTagalongs()
+        {
+            try
+            {
+                var tagalongs = await _tagalongService.GetAcceptedTagalongsAsync();
+                return Ok(tagalongs);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(
+                    500,
+                    new { message = $"Error retrieving accepted tagalongs: {ex.Message}" }
+                );
+            }
         }
     }
 
