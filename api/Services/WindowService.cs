@@ -198,6 +198,9 @@ namespace Hyv.Services
                         // OR user is a member of at least one of the window's visible categories
                         w.WindowVisibilities.Any(wv => userCategoryIds.Contains(wv.CategoryId))
                     )
+                    &&
+                    // AND the logged-in user is NOT a participant
+                    !w.WindowParticipants.Any(wp => wp.UserId == userId)
                 );
 
             // If date range parameters are provided, apply date filtering
