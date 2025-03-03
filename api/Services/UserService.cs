@@ -60,6 +60,34 @@ namespace Hyv.Services
 
         public async Task<bool> DeleteAllUsersAsync()
         {
+            // Delete all related data before deleting users to avoid foreign key constraint violations
+            // Order matters: delete dependent entities first
+
+            // Clear Tagalongs
+            _context.Tagalongs.RemoveRange(_context.Tagalongs);
+
+            // Clear Friendships
+            _context.Friendships.RemoveRange(_context.Friendships);
+
+            // Clear CategoryMembers
+            _context.CategoryMembers.RemoveRange(_context.CategoryMembers);
+
+            // Clear FriendshipCategories
+            _context.FriendshipCategories.RemoveRange(_context.FriendshipCategories);
+
+            // Clear WindowParticipants
+            _context.WindowParticipants.RemoveRange(_context.WindowParticipants);
+
+            // Clear Windows
+            _context.Windows.RemoveRange(_context.Windows);
+
+            // Clear Hangouts
+            _context.Hangouts.RemoveRange(_context.Hangouts);
+
+            // Save changes to ensure related records are deleted
+            await _context.SaveChangesAsync();
+
+            // Now safe to delete users
             _context.Users.RemoveRange(_context.Users);
 
             int result = await _context.SaveChangesAsync();
@@ -286,4 +314,3 @@ namespace Hyv.Services
         }
     }
 }
-

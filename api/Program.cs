@@ -12,9 +12,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
-
-
-
 var builder = WebApplication.CreateBuilder(args);
 
 // ✅ Load .env file (only in development)
@@ -149,6 +146,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>(); // Adde
 builder.Services.AddScoped<IFriendshipCategoryService, FriendshipCategoryService>();
 builder.Services.AddScoped<ICategoryMemberService, CategoryMemberService>(); // Add this line
 builder.Services.AddScoped<IHangoutService, HangoutService>();
+builder.Services.AddScoped<IWindowService, WindowService>(); // Add Window service registration
 
 // ✅ Register AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
@@ -196,4 +194,3 @@ app.UseAuthorization(); // Remove the UseWhen wrapper
 app.MapControllers();
 
 app.Run();
-

@@ -30,6 +30,9 @@ namespace Hyv.Services
 
         // Add new method to check if a tagalong exists between users
         Task<bool> HasTagalongWithUserAsync(string userId);
+
+        // Change the return type of GetAcceptedTagalongsAsync to return TagalongFriendDto
+        Task<IEnumerable<TagalongFriendDto>> GetAcceptedTagalongsAsync();
     }
 
     public class TagalongService : ITagalongService
@@ -199,6 +202,48 @@ namespace Hyv.Services
                 (t.SenderId == currentUserId && t.RecipientId == userId)
                 || (t.SenderId == userId && t.RecipientId == currentUserId)
             );
+        }
+
+        public async Task<IEnumerable<TagalongFriendDto>> GetAcceptedTagalongsAsync()
+        {
+            var currentUserId = _httpContextAccessor
+                .HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)
+                ?.Value;
+
+            if (currentUserId == null)
+                return new List<TagalongFriendDto>();
+
+            // Get all tagalongs where the current user is either sender or recipient
+            // and the status is Accepted
+            var query = await _context
+                .Tagalongs.Include(t => t.Sender)
+                .Include(t => t.Recipient)
+                .Where(t =>
+                    t.Status == Status.Accepted
+                    && (t.SenderId == currentUserId || t.RecipientId == currentUserId)
+                )
+                .ToListAsync();
+
+            // Transform the results to just include the other user as a friend
+            var friendDtos = query
+                .Select(t =>
+                {
+                    // Determine which user is the friend (not the current user)
+                    var friend = t.SenderId == currentUserId ? t.Recipient : t.Sender;
+
+                    // Map to our friend DTO
+                    return new TagalongFriendDto
+                    {
+                        TagalongId = t.Id,
+                        UserId = friend.Id,
+                        FirstName = friend.FirstName,
+                        LastName = friend.LastName,
+                        Email = friend.Email,
+                    };
+                })
+                .ToList();
+
+            return friendDtos;
         }
     }
 }

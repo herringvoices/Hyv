@@ -141,7 +141,8 @@ public class MappingProfile : Profile
         // 4. WindowParticipant <-> WindowParticipantDto
         // ================================
         CreateMap<WindowParticipant, WindowParticipantDto>()
-            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId));
+            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
+            .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User));
         CreateMap<WindowParticipantDto, WindowParticipant>()
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId));
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Dialog } from "radix-ui";
+import { Dialog, Checkbox } from "radix-ui";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createWindow } from "../../services/windowServices";
-import { getPendingTagalongs } from "../../services/tagalongService";
+import { getAcceptedTagalongs } from "../../services/tagalongService";
+import { getAllCategories } from "../../services/friendshipCategoryService";
 
 export default function WindowFormModal({ isOpen, onClose, selectInfo }) {
   // Form state
@@ -19,43 +20,74 @@ export default function WindowFormModal({ isOpen, onClose, selectInfo }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  // New state variables for visibility settings
+  const [limitVisibility, setLimitVisibility] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+
   // Fetch tagalong friends
   useEffect(() => {
     const fetchTagalongs = async () => {
       try {
-        // Only fetch tagalong friends where the user is the recipient (true = sender)
-        const tagalongs = await getPendingTagalongs(false);
+        // Get all accepted tagalong friends (this now returns the friend information directly)
+        const friends = await getAcceptedTagalongs();
         setTagalongFriends(
-          tagalongs.map((t) => ({
-            id: t.sender.id,
-            name: `${t.sender.firstName} ${t.sender.lastName}`,
+          friends.map((friend) => ({
+            id: friend.userId,
+            name: `${friend.firstName} ${friend.lastName}`,
+            tagalongId: friend.tagalongId,
           }))
         );
       } catch (err) {
         console.error("Error fetching tagalong friends:", err);
+        setTagalongFriends([]);
+      }
+    };
+
+    // Fetch user's friendship categories
+    const fetchCategories = async () => {
+      try {
+        const userCategories = await getAllCategories();
+        setCategories(userCategories);
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+        setCategories([]);
       }
     };
 
     if (isOpen) {
       fetchTagalongs();
+      fetchCategories();
     }
   }, [isOpen]);
 
-  // Set initial values when the modal opens
+  // Set initial values when the modal opens - Fix timezone handling
   useEffect(() => {
     if (selectInfo && isOpen) {
       const start = new Date(selectInfo.startStr);
       const end = new Date(selectInfo.endStr);
 
-      // Format dates for date inputs (YYYY-MM-DD)
-      setStartDate(start.toISOString().split("T")[0]);
-      setEndDate(end.toISOString().split("T")[0]);
+      // Format dates for date inputs (YYYY-MM-DD) using local date components
+      // to avoid timezone shifts
+      const formatLocalDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
 
-      // Format times for time inputs (HH:MM)
-      const startTimeStr = start.toTimeString().substring(0, 5);
-      const endTimeStr = end.toTimeString().substring(0, 5);
-      setStartTime(startTimeStr);
-      setEndTime(endTimeStr);
+      // Format times for time inputs (HH:MM) using local time components
+      const formatLocalTime = (date) => {
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${hours}:${minutes}`;
+      };
+
+      // Set form values using local date/time
+      setStartDate(formatLocalDate(start));
+      setEndDate(formatLocalDate(end));
+      setStartTime(formatLocalTime(start));
+      setEndTime(formatLocalTime(end));
     }
   }, [selectInfo, isOpen]);
 
@@ -65,6 +97,17 @@ export default function WindowFormModal({ isOpen, onClose, selectInfo }) {
       setSelectedFriends(selectedFriends.filter((id) => id !== friendId));
     } else {
       setSelectedFriends([...selectedFriends, friendId]);
+    }
+  };
+
+  // Handle category selection
+  const handleCategorySelection = (categoryId) => {
+    if (selectedCategories.includes(categoryId)) {
+      setSelectedCategories(
+        selectedCategories.filter((id) => id !== categoryId)
+      );
+    } else {
+      setSelectedCategories([...selectedCategories, categoryId]);
     }
   };
 
@@ -85,10 +128,11 @@ export default function WindowFormModal({ isOpen, onClose, selectInfo }) {
     setError(null);
 
     try {
+      // Create local Date objects from the form inputs
       const startDateTime = new Date(`${startDate}T${startTime}`);
       const endDateTime = new Date(`${endDate}T${endTime}`);
 
-      // Create window data object with FullCalendar-compatible format
+      // Convert to ISO strings for the backend (UTC)
       const windowData = {
         title: title || "Window",
         start: startDateTime.toISOString(),
@@ -100,7 +144,11 @@ export default function WindowFormModal({ isOpen, onClose, selectInfo }) {
           participants: selectedFriends.map((friendId) => ({
             userId: friendId,
           })),
-          visibilities: [], // Will be implemented later
+          visibilities: limitVisibility
+            ? selectedCategories.map((categoryId) => ({
+                categoryId: categoryId,
+              }))
+            : [],
         },
       };
 
@@ -116,10 +164,10 @@ export default function WindowFormModal({ isOpen, onClose, selectInfo }) {
   };
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={onClose}>
+    <Dialog.Root open={isOpen} onOpenChange={() => onClose(false)}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content className="fixed border border-primary  shadow-primary shadow-lg top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-dark p-6 rounded-lg w-11/12 max-w-md max-h-[90vh] overflow-y-auto z-50">
+        <Dialog.Content className="fixed border border-primary shadow-primary shadow-lg top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-dark p-6 rounded-lg w-11/12 max-w-md max-h-[90vh] overflow-y-auto z-50">
           <Dialog.Title className="text-xl font-bold text-primary mb-4">
             Create New Window
           </Dialog.Title>
@@ -132,6 +180,18 @@ export default function WindowFormModal({ isOpen, onClose, selectInfo }) {
 
           <form onSubmit={handleSubmit}>
             {/* Window Title */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-light mb-1">
+                Window Title (optional)
+              </label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 rounded border border-primary bg-dark text-light"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="My Window"
+              />
+            </div>
 
             {/* Start Date & Time */}
             <div className="mb-4">
@@ -239,16 +299,25 @@ export default function WindowFormModal({ isOpen, onClose, selectInfo }) {
                   {tagalongFriends.map((friend) => (
                     <div
                       key={friend.id}
-                      className="flex items-center mb-2 text-light"
+                      className="flex items-center py-2 border-b border-gray-700 last:border-b-0"
                     >
-                      <input
-                        type="checkbox"
-                        id={`friend-${friend.id}`}
+                      <Checkbox.Root
+                        className="flex h-5 w-5 items-center justify-center rounded border border-primary bg-dark data-[state=checked]:bg-primary"
                         checked={selectedFriends.includes(friend.id)}
-                        onChange={() => handleFriendSelection(friend.id)}
-                        className="mr-2 accent-primary"
-                      />
-                      <label htmlFor={`friend-${friend.id}`}>
+                        onCheckedChange={() => handleFriendSelection(friend.id)}
+                        id={`friend-${friend.id}`}
+                      >
+                        <Checkbox.Indicator>
+                          <FontAwesomeIcon
+                            icon="check"
+                            className="text-xs text-dark"
+                          />
+                        </Checkbox.Indicator>
+                      </Checkbox.Root>
+                      <label
+                        className="text-light ml-2 text-sm cursor-pointer"
+                        htmlFor={`friend-${friend.id}`}
+                      >
                         {friend.name}
                       </label>
                     </div>
@@ -261,14 +330,82 @@ export default function WindowFormModal({ isOpen, onClose, selectInfo }) {
               )}
             </div>
 
-            {/* Visibility will be implemented later */}
+            {/* Visibility Settings */}
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-1 text-gray-400">
-                Visibility Settings (Coming Soon)
-              </label>
-              <div className="text-xs text-gray-400">
-                This feature will allow you to limit who can see this window.
+              <div className="flex items-center mb-2">
+                <Checkbox.Root
+                  className="flex h-5 w-5 items-center justify-center rounded border border-primary bg-dark data-[state=checked]:bg-primary"
+                  checked={limitVisibility}
+                  onCheckedChange={() => setLimitVisibility(!limitVisibility)}
+                  id="limit-visibility"
+                >
+                  <Checkbox.Indicator>
+                    <FontAwesomeIcon
+                      icon="check"
+                      className="text-xs text-dark"
+                    />
+                  </Checkbox.Indicator>
+                </Checkbox.Root>
+                <label
+                  className="text-light ml-2 text-sm font-medium cursor-pointer"
+                  htmlFor="limit-visibility"
+                >
+                  Limit Visibility
+                </label>
               </div>
+
+              {limitVisibility && (
+                <div className="mt-2">
+                  <div className="text-xs text-gray-400 mb-2">
+                    Select which friend categories can see this window:
+                  </div>
+
+                  {categories.length > 0 ? (
+                    <div className="max-h-40 overflow-y-auto border border-primary rounded p-2">
+                      {categories.map((category) => (
+                        <div
+                          key={category.id}
+                          className="flex items-center py-2 border-b border-gray-700 last:border-b-0"
+                        >
+                          <Checkbox.Root
+                            className="flex h-5 w-5 items-center justify-center rounded border border-primary bg-dark data-[state=checked]:bg-primary"
+                            checked={selectedCategories.includes(category.id)}
+                            onCheckedChange={() =>
+                              handleCategorySelection(category.id)
+                            }
+                            id={`category-${category.id}`}
+                          >
+                            <Checkbox.Indicator>
+                              <FontAwesomeIcon
+                                icon="check"
+                                className="text-xs text-dark"
+                              />
+                            </Checkbox.Indicator>
+                          </Checkbox.Root>
+                          <label
+                            className="text-light ml-2 text-sm cursor-pointer"
+                            htmlFor={`category-${category.id}`}
+                          >
+                            {category.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-gray-400 border border-primary rounded p-3">
+                      No categories available. Create categories in Friends
+                      settings.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!limitVisibility && (
+                <div className="text-xs text-gray-400">
+                  By default, all tagalong friends can see your windows. Enable
+                  this option to limit visibility to specific friend categories.
+                </div>
+              )}
             </div>
 
             {/* Form Buttons */}
@@ -288,7 +425,26 @@ export default function WindowFormModal({ isOpen, onClose, selectInfo }) {
               >
                 {isSubmitting ? (
                   <>
-                    <FontAwesomeIcon icon="spinner" spin className="mr-2" />
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-dark"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
                     Creating...
                   </>
                 ) : (
@@ -302,7 +458,6 @@ export default function WindowFormModal({ isOpen, onClose, selectInfo }) {
             <button
               className="absolute top-4 right-4 text-gray-400 hover:text-primary"
               aria-label="Close"
-              onClick={() => onClose(false)}
             >
               <FontAwesomeIcon icon="times" />
             </button>

@@ -17,6 +17,10 @@ namespace Hyv.Services
         Task<IEnumerable<UserDto>> GetFriendsAsync(string search);
         Task<bool> RemoveFriendAsync(string friendId);
         Task<bool> BlockUserAsync(string userIdToBlock);
+        Task<FriendshipDto> SendFriendRequestAsync(string recipientId);
+        Task<FriendshipDto> AcceptFriendRequestAsync(string senderId);
+        Task<bool> RejectFriendRequestAsync(string senderId);
+        Task<IEnumerable<FriendshipDto>> GetFriendRequestsAsync();
     }
 
     public class FriendService : IFriendService
@@ -84,6 +88,9 @@ namespace Hyv.Services
             if (string.IsNullOrEmpty(currentUserId) || currentUserId == friendId)
                 return false;
 
+            // Add category cleanup - remove the friend from all categories bidirectionally
+            await RemoveFromAllCategoriesAsync(currentUserId, friendId);
+
             var friendship = await _context.Friendships.FirstOrDefaultAsync(f =>
                 (f.SenderId == currentUserId && f.RecipientId == friendId)
                 || (f.SenderId == friendId && f.RecipientId == currentUserId)
@@ -113,6 +120,9 @@ namespace Hyv.Services
                 ?.Value;
             if (string.IsNullOrEmpty(currentUserId) || currentUserId == userIdToBlock)
                 return false;
+
+            // Add category cleanup - remove the user from all categories bidirectionally
+            await RemoveFromAllCategoriesAsync(currentUserId, userIdToBlock);
 
             // Remove any tagalongs between these users
             var tagalongIds = await _tagalongService.GetTagalongIdsBetweenUsersAsync(
@@ -147,6 +157,70 @@ namespace Hyv.Services
                 );
             }
             return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<FriendshipDto> SendFriendRequestAsync(string recipientId)
+        {
+            // Implementation from FriendshipService
+            throw new System.NotImplementedException();
+        }
+
+        public async Task<FriendshipDto> AcceptFriendRequestAsync(string senderId)
+        {
+            // Implementation from FriendshipService
+            throw new System.NotImplementedException();
+        }
+
+        public async Task<bool> RejectFriendRequestAsync(string senderId)
+        {
+            // Implementation from FriendshipService
+            throw new System.NotImplementedException();
+        }
+
+        public async Task<IEnumerable<FriendshipDto>> GetFriendRequestsAsync()
+        {
+            // Implementation from FriendshipService
+            throw new System.NotImplementedException();
+        }
+
+        private async Task RemoveFromAllCategoriesAsync(string currentUserId, string friendId)
+        {
+            // 1. First find all categories belonging to the current user
+            var currentUserCategoryIds = await _context
+                .FriendshipCategories.Where(fc => fc.UserId == currentUserId)
+                .Select(fc => fc.Id)
+                .ToListAsync();
+
+            // Find all members in those categories that match the friend ID
+            var currentUserCategoryMembers = await _context
+                .CategoryMembers.Where(cm =>
+                    currentUserCategoryIds.Contains(cm.CategoryId) && cm.FriendId == friendId
+                )
+                .ToListAsync();
+
+            // 2. Find all categories belonging to the friend
+            var friendCategoryIds = await _context
+                .FriendshipCategories.Where(fc => fc.UserId == friendId)
+                .Select(fc => fc.Id)
+                .ToListAsync();
+
+            // Find all members in those categories that match the current user ID
+            var friendCategoryMembers = await _context
+                .CategoryMembers.Where(cm =>
+                    friendCategoryIds.Contains(cm.CategoryId) && cm.FriendId == currentUserId
+                )
+                .ToListAsync();
+
+            // Combine all category members that need to be removed
+            var allCategoryMembersToRemove = currentUserCategoryMembers
+                .Concat(friendCategoryMembers)
+                .ToList();
+
+            if (allCategoryMembersToRemove.Any())
+            {
+                _context.CategoryMembers.RemoveRange(allCategoryMembersToRemove);
+                await _context.SaveChangesAsync();
+            }
         }
     }
 }

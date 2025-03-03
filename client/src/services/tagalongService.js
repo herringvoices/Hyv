@@ -80,3 +80,28 @@ export async function checkTagalongExists(userId) {
   const data = await response.json();
   return data.exists;
 }
+
+export async function getAcceptedTagalongs() {
+  try {
+    console.log("Fetching accepted tagalongs from:", `${API_BASE}/accepted`);
+    const response = await fetch(`${API_BASE}/accepted`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        "Error fetching accepted tagalongs:",
+        errorText,
+        response.status
+      );
+      throw new Error(`Failed to fetch accepted tagalongs: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("Accepted tagalongs data:", data);
+    return data;
+  } catch (err) {
+    console.error("Exception in getAcceptedTagalongs:", err);
+    // Return an empty array as fallback
+    return [];
+  }
+}
