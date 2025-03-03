@@ -23,6 +23,12 @@ namespace Hyv.Services
             DateTime? end = null,
             int? categoryId = null
         );
+
+        // Add new method to delete all windows for a user
+        Task<int> DeleteAllWindowsAsync(string userId);
+
+        // Add new method for updating a window
+        Task<WindowDto> UpdateWindowAsync(int windowId, WindowDto windowDto, string userId);
     }
 
     public class WindowService : IWindowService
@@ -38,99 +44,140 @@ namespace Hyv.Services
 
         public async Task<WindowDto> CreateWindowAsync(WindowDto windowDto)
         {
-            // Map from DTO to entity
-            var window = _mapper.Map<Window>(windowDto);
-
-            // Before creating the window, check for overlaps with existing windows
-            // where the user is a participant
-            var userId = window.UserId;
-            var overlappingWindows = await _dbContext
-                .Windows.Include(w => w.WindowParticipants)
-                .Where(w =>
-                    w.WindowParticipants.Any(p => p.UserId == userId)
-                    && window.Start < w.End
-                    && window.End > w.Start
-                )
-                .ToListAsync();
-
-            if (overlappingWindows.Any())
+            try
             {
-                // If overlapping windows exist, throw an exception
-                throw new InvalidOperationException(
-                    "Cannot create window: Time slot overlaps with another window where you are a participant."
-                );
-            }
-
-            // Ensure the current user is added as a participant if they're not already
-            if (window.WindowParticipants == null)
-            {
-                window.WindowParticipants = new List<WindowParticipant>();
-            }
-
-            // Add the window creator as a participant if not already included
-            if (!window.WindowParticipants.Any(p => p.UserId == window.UserId))
-            {
-                window.WindowParticipants.Add(new WindowParticipant { UserId = window.UserId });
-            }
-
-            // Add participants from the DTO
-            if (windowDto.ExtendedProps?.Participants != null)
-            {
-                foreach (var participant in windowDto.ExtendedProps.Participants)
+                // Map from DTO to entity
+                var window = new Window
                 {
-                    if (
-                        participant.UserId != null
-                        && !window.WindowParticipants.Any(p => p.UserId == participant.UserId)
+                    UserId = windowDto.ExtendedProps?.UserId,
+                    PreferredActivity = windowDto.ExtendedProps?.PreferredActivity ?? string.Empty,
+                    DaysOfNoticeNeeded = windowDto.ExtendedProps?.DaysOfNoticeNeeded ?? 0,
+                    Active = windowDto.ExtendedProps?.Active ?? true,
+                    Start = windowDto.Start,
+                    End = windowDto.End,
+                    HangoutId = windowDto.ExtendedProps?.HangoutId,
+                    WindowParticipants = new List<WindowParticipant>(),
+                    WindowVisibilities = new List<WindowVisibility>(),
+                };
+
+                // Before creating the window, check for overlaps with existing windows
+                // where the user is a participant
+                var userId = window.UserId;
+                var overlappingWindows = await _dbContext
+                    .Windows.Include(w => w.WindowParticipants)
+                    .Where(w =>
+                        w.WindowParticipants.Any(p => p.UserId == userId)
+                        && window.Start < w.End
+                        && window.End > w.Start
                     )
-                    {
-                        window.WindowParticipants.Add(
-                            new WindowParticipant { UserId = participant.UserId }
-                        );
-                    }
-                }
-            }
+                    .ToListAsync();
 
-            // Initialize WindowVisibilities collection if it doesn't exist
-            if (window.WindowVisibilities == null)
-            {
-                window.WindowVisibilities = new List<WindowVisibility>();
-            }
-
-            // Add visibilities from the DTO
-            if (windowDto.ExtendedProps?.Visibilities != null)
-            {
-                foreach (var visibility in windowDto.ExtendedProps.Visibilities)
+                if (overlappingWindows.Any())
                 {
-                    if (
-                        visibility.CategoryId > 0
-                        && !window.WindowVisibilities.Any(wv =>
-                            wv.CategoryId == visibility.CategoryId
+                    throw new InvalidOperationException(
+                        "Cannot create window: Time slot overlaps with another window where you are a participant."
+                    );
+                }
+
+                // Add the window creator as a participant
+                window.WindowParticipants.Add(new WindowParticipant { UserId = window.UserId });
+
+                // Add participants from the DTO
+                if (windowDto.ExtendedProps?.Participants != null)
+                {
+                    foreach (
+                        var participant in windowDto.ExtendedProps.Participants.Where(p =>
+                            p?.UserId != null
                         )
                     )
                     {
-                        window.WindowVisibilities.Add(
-                            new WindowVisibility { CategoryId = visibility.CategoryId }
-                        );
+                        if (!window.WindowParticipants.Any(p => p.UserId == participant.UserId))
+                        {
+                            window.WindowParticipants.Add(
+                                new WindowParticipant { UserId = participant.UserId }
+                            );
+                        }
                     }
                 }
+
+                // Add visibilities from the DTO
+                if (windowDto.ExtendedProps?.Visibilities != null)
+                {
+                    foreach (var visibility in windowDto.ExtendedProps.Visibilities)
+                    {
+                        if (visibility != null && visibility.CategoryId > 0)
+                        {
+                            window.WindowVisibilities.Add(
+                                new WindowVisibility { CategoryId = visibility.CategoryId }
+                            );
+                        }
+                    }
+                }
+
+                // Add the window to the database
+                _dbContext.Windows.Add(window);
+                await _dbContext.SaveChangesAsync();
+
+                // Reload the window with all its relationships for proper mapping
+                var createdWindow = await _dbContext
+                    .Windows.AsNoTracking() // Prevent tracking issues
+                    .Include(w => w.User)
+                    .Include(w => w.Hangout)
+                    .Include(w => w.WindowParticipants)
+                    .ThenInclude(wp => wp.User)
+                    .Include(w => w.WindowVisibilities)
+                    .ThenInclude(wv => wv.Category)
+                    .FirstOrDefaultAsync(w => w.Id == window.Id);
+
+                // Manually create DTO to avoid mapping issues
+                var result = new WindowDto
+                {
+                    Id = createdWindow.Id.ToString(),
+                    Start = createdWindow.Start,
+                    End = createdWindow.End,
+                    ExtendedProps = new WindowExtendedPropsDto
+                    {
+                        UserId = createdWindow.UserId,
+                        PreferredActivity = createdWindow.PreferredActivity,
+                        DaysOfNoticeNeeded = createdWindow.DaysOfNoticeNeeded,
+                        Active = createdWindow.Active,
+                        HangoutId = createdWindow.HangoutId,
+                        User = _mapper.Map<UserDto>(createdWindow.User),
+                        Hangout =
+                            createdWindow.Hangout != null
+                                ? _mapper.Map<HangoutDto>(createdWindow.Hangout)
+                                : null,
+                        Participants = createdWindow
+                            .WindowParticipants?.Select(p => new WindowParticipantDto
+                            {
+                                Id = p.Id,
+                                WindowId = p.WindowId,
+                                UserId = p.UserId,
+                                User = p.User != null ? _mapper.Map<UserDto>(p.User) : null,
+                            })
+                            .ToList(),
+                        Visibilities = createdWindow
+                            .WindowVisibilities?.Select(v => new WindowVisibilityDto
+                            {
+                                Id = v.Id,
+                                WindowId = v.WindowId,
+                                CategoryId = v.CategoryId,
+                                Category =
+                                    v.Category != null
+                                        ? _mapper.Map<FriendshipCategoryDto>(v.Category)
+                                        : null,
+                            })
+                            .ToList(),
+                    },
+                };
+
+                return result;
             }
-
-            // Add the window to the database
-            _dbContext.Windows.Add(window);
-            await _dbContext.SaveChangesAsync();
-
-            // Reload the window with all its relationships for proper mapping
-            var createdWindow = await _dbContext
-                .Windows.Include(w => w.User)
-                .Include(w => w.Hangout)
-                .Include(w => w.WindowParticipants)
-                .ThenInclude(wp => wp.User)
-                .Include(w => w.WindowVisibilities)
-                .ThenInclude(wv => wv.Category)
-                .FirstOrDefaultAsync(w => w.Id == window.Id);
-
-            // Map back to DTO with the generated ID and included relationships
-            return _mapper.Map<WindowDto>(createdWindow);
+            catch (Exception ex)
+            {
+                // Wrap exceptions to get better diagnostics
+                throw new Exception($"Error creating window: {ex.Message}", ex);
+            }
         }
 
         public async Task<IEnumerable<WindowDto>> GetWindowsByDateRangeAsync(
@@ -288,6 +335,180 @@ namespace Hyv.Services
 
             // Map to DTOs and return
             return _mapper.Map<IEnumerable<WindowDto>>(windows);
+        }
+
+        // Implement the delete all windows method
+        public async Task<int> DeleteAllWindowsAsync(string userId)
+        {
+            try
+            {
+                // Get all windows for the user
+                var windows = await _dbContext.Windows.Where(w => w.UserId == userId).ToListAsync();
+
+                if (!windows.Any())
+                {
+                    return 0; // No windows to delete
+                }
+
+                // Delete all related window participants and visibilities first
+                var windowIds = windows.Select(w => w.Id).ToList();
+
+                // Delete all window participants
+                var participants = await _dbContext
+                    .WindowParticipants.Where(wp => windowIds.Contains(wp.WindowId))
+                    .ToListAsync();
+                _dbContext.WindowParticipants.RemoveRange(participants);
+
+                // Delete all window visibilities
+                var visibilities = await _dbContext
+                    .WindowVisibilities.Where(wv => windowIds.Contains(wv.WindowId))
+                    .ToListAsync();
+                _dbContext.WindowVisibilities.RemoveRange(visibilities);
+
+                // Now delete all windows
+                _dbContext.Windows.RemoveRange(windows);
+
+                // Save changes to the database
+                await _dbContext.SaveChangesAsync();
+
+                // Return the count of deleted windows
+                return windows.Count;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to delete windows: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<WindowDto> UpdateWindowAsync(
+            int windowId,
+            WindowDto windowDto,
+            string userId
+        )
+        {
+            // Find window and verify ownership
+            var window = await _dbContext
+                .Windows.Include(w => w.WindowParticipants)
+                .Include(w => w.WindowVisibilities)
+                .FirstOrDefaultAsync(w => w.Id == windowId);
+
+            if (window == null)
+            {
+                throw new KeyNotFoundException($"Window with ID {windowId} not found");
+            }
+
+            if (window.UserId != userId)
+            {
+                throw new UnauthorizedAccessException(
+                    "You are not authorized to update this window"
+                );
+            }
+
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Update basic properties
+                window.Start = windowDto.Start;
+                window.End = windowDto.End;
+                window.PreferredActivity =
+                    windowDto.ExtendedProps?.PreferredActivity ?? window.PreferredActivity;
+                window.DaysOfNoticeNeeded =
+                    windowDto.ExtendedProps?.DaysOfNoticeNeeded ?? window.DaysOfNoticeNeeded;
+                window.Active = windowDto.ExtendedProps?.Active ?? window.Active;
+                window.HangoutId = windowDto.ExtendedProps?.HangoutId;
+                window.UpdatedAt = DateTime.UtcNow;
+
+                await _dbContext.SaveChangesAsync();
+
+                // Update participants (removing all except owner and adding new ones)
+                var participantsToRemove = window
+                    .WindowParticipants.Where(p => p.UserId != window.UserId)
+                    .ToList();
+
+                if (participantsToRemove.Any())
+                {
+                    _dbContext.WindowParticipants.RemoveRange(participantsToRemove);
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                // Add new participants from the DTO
+                if (windowDto.ExtendedProps?.Participants != null)
+                {
+                    // Get current participants to avoid duplicates
+                    var existingParticipantIds = window
+                        .WindowParticipants.Select(p => p.UserId)
+                        .ToList();
+
+                    foreach (var participant in windowDto.ExtendedProps.Participants)
+                    {
+                        if (
+                            participant?.UserId != null
+                            && participant.UserId != window.UserId
+                            && // Skip owner (already a participant)
+                            !existingParticipantIds.Contains(participant.UserId)
+                        ) // Skip duplicates
+                        {
+                            _dbContext.WindowParticipants.Add(
+                                new WindowParticipant
+                                {
+                                    WindowId = windowId,
+                                    UserId = participant.UserId,
+                                }
+                            );
+                            existingParticipantIds.Add(participant.UserId);
+                        }
+                    }
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                // Update visibilities (remove all and add new ones)
+                var visibilitiesToRemove = window.WindowVisibilities.ToList();
+                if (visibilitiesToRemove.Any())
+                {
+                    _dbContext.WindowVisibilities.RemoveRange(visibilitiesToRemove);
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                // Add new visibilities
+                if (windowDto.ExtendedProps?.Visibilities != null)
+                {
+                    foreach (var visibility in windowDto.ExtendedProps.Visibilities)
+                    {
+                        if (visibility?.CategoryId > 0)
+                        {
+                            _dbContext.WindowVisibilities.Add(
+                                new WindowVisibility
+                                {
+                                    WindowId = windowId,
+                                    CategoryId = visibility.CategoryId,
+                                }
+                            );
+                        }
+                    }
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                // Reload the updated window with all relationships
+                var updatedWindow = await _dbContext
+                    .Windows.AsNoTracking() // Prevent tracking issues
+                    .Include(w => w.User)
+                    .Include(w => w.Hangout)
+                    .Include(w => w.WindowParticipants)
+                    .ThenInclude(wp => wp.User)
+                    .Include(w => w.WindowVisibilities)
+                    .ThenInclude(wv => wv.Category)
+                    .FirstOrDefaultAsync(w => w.Id == windowId);
+
+                return _mapper.Map<WindowDto>(updatedWindow);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception($"Failed to update window: {ex.Message}", ex);
+            }
         }
     }
 }
