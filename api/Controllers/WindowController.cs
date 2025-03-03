@@ -84,5 +84,31 @@ namespace Hyv.Controllers
             var windows = await _windowService.GetWindowsByDateRangeAsync(start, end, userId);
             return Ok(windows);
         }
+
+        [HttpGet("hive")]
+        public async Task<IActionResult> GetHiveWindows(
+            [FromQuery] DateTime? start = null,
+            [FromQuery] DateTime? end = null,
+            [FromQuery] int? categoryId = null
+        )
+        {
+            // Get the current user's ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            var userId = userIdClaim.Value;
+
+            // Use the consolidated method with all parameters
+            var hiveWindows = await _windowService.GetHiveWindowsAsync(
+                userId,
+                start,
+                end,
+                categoryId
+            );
+            return Ok(hiveWindows);
+        }
     }
 }

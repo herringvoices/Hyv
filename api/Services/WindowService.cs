@@ -6,6 +6,25 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hyv.Services
 {
+    // Interface for dependency injection - moved back into this file
+    public interface IWindowService
+    {
+        Task<WindowDto> CreateWindowAsync(WindowDto windowDto);
+
+        Task<IEnumerable<WindowDto>> GetWindowsByDateRangeAsync(
+            DateTime start,
+            DateTime end,
+            string userId
+        );
+
+        Task<IEnumerable<WindowDto>> GetHiveWindowsAsync(
+            string userId,
+            DateTime? start = null,
+            DateTime? end = null,
+            int? categoryId = null
+        );
+    }
+
     public class WindowService : IWindowService
     {
         private readonly HyvDbContext _dbContext;
@@ -144,6 +163,130 @@ namespace Hyv.Services
                 .ToListAsync();
 
             // Map to DTOs
+            return _mapper.Map<IEnumerable<WindowDto>>(windows);
+        }
+
+        public async Task<IEnumerable<WindowDto>> GetHiveWindowsAsync(
+            string userId,
+            DateTime? start = null,
+            DateTime? end = null,
+            int? categoryId = null
+        )
+        {
+            // First, get the categories that the current user is a member of
+            var userCategoryIds = await _dbContext
+                .CategoryMembers.Where(cm => cm.FriendId == userId)
+                .Select(cm => cm.CategoryId)
+                .ToListAsync();
+
+            // Start building our query with the basic category visibility filter
+            var query = _dbContext
+                .Windows.Include(w => w.User)
+                .Include(w => w.Hangout)
+                .Include(w => w.WindowParticipants)
+                .ThenInclude(wp => wp.User)
+                .Include(w => w.WindowVisibilities)
+                .ThenInclude(wv => wv.Category)
+                .Where(w =>
+                    // Window is active
+                    w.Active
+                    &&
+                    // AND either has no visibility restrictions
+                    (
+                        !w.WindowVisibilities.Any()
+                        ||
+                        // OR user is a member of at least one of the window's visible categories
+                        w.WindowVisibilities.Any(wv => userCategoryIds.Contains(wv.CategoryId))
+                    )
+                    &&
+                    // AND the logged-in user is NOT a participant
+                    !w.WindowParticipants.Any(wp => wp.UserId == userId)
+                );
+
+            // If date range parameters are provided, apply date filtering
+            if (start.HasValue && end.HasValue)
+            {
+                // Get user's own windows within the date range
+                var userWindowsInRange = await _dbContext
+                    .Windows.Where(w =>
+                        w.WindowParticipants.Any(p => p.UserId == userId)
+                        && w.Start >= start.Value
+                        && w.End <= end.Value
+                    )
+                    .ToListAsync();
+
+                if (!userWindowsInRange.Any())
+                {
+                    // User has no windows in this range, so no overlaps possible
+                    return new List<WindowDto>();
+                }
+
+                // Get the user's friends
+                var friendUserIds = await _dbContext
+                    .Friendships.Where(f =>
+                        (f.SenderId == userId || f.RecipientId == userId)
+                        && f.Status == Status.Accepted
+                    )
+                    .Select(f => f.SenderId == userId ? f.RecipientId : f.SenderId)
+                    .ToListAsync();
+
+                if (!friendUserIds.Any())
+                {
+                    // User has no friends, so no overlaps possible
+                    return new List<WindowDto>();
+                }
+
+                // Apply additional filter for date range and participants being friends
+                query = query.Where(w =>
+                    w.Start >= start.Value
+                    && w.End <= end.Value
+                    && w.WindowParticipants.Any(p => friendUserIds.Contains(p.UserId))
+                );
+
+                // We'll need to further filter for actual overlaps below
+            }
+
+            // If categoryId is provided, filter to only include windows where participants
+            // are members of the specified category
+            if (categoryId.HasValue)
+            {
+                // Get all users who are members of the specified category
+                var categoryMemberIds = await _dbContext
+                    .CategoryMembers.Where(cm => cm.CategoryId == categoryId.Value)
+                    .Select(cm => cm.FriendId)
+                    .ToListAsync();
+
+                // Only include windows where at least one participant is a member of the category
+                query = query.Where(w =>
+                    w.WindowParticipants.Any(wp => categoryMemberIds.Contains(wp.UserId))
+                );
+            }
+
+            var windows = await query.ToListAsync();
+
+            // If date range was specified, need to do post-processing to filter for actual overlaps
+            if (start.HasValue && end.HasValue)
+            {
+                // Get all user windows again for overlap check
+                var userWindows = await _dbContext
+                    .Windows.Where(w =>
+                        w.WindowParticipants.Any(p => p.UserId == userId)
+                        && w.Start >= start.Value
+                        && w.End <= end.Value
+                    )
+                    .ToListAsync();
+
+                // Only include windows that actually overlap with user's windows
+                windows = windows
+                    .Where(friendWindow =>
+                        userWindows.Any(uw =>
+                            friendWindow.Start < uw.End && friendWindow.End > uw.Start
+                        )
+                    )
+                    .ToList();
+            }
+
+            // Map to DTOs and return
             return _mapper.Map<IEnumerable<WindowDto>>(windows);
         }
     }

@@ -30,3 +30,36 @@ export const createWindow = async (windowData) => {
 
   return await response.json();
 };
+
+export const getHiveWindows = async (
+  start = null,
+  end = null,
+  categoryId = null
+) => {
+  let url = `${apiUrl}/hive`;
+
+  // Add query parameters if they exist
+  const params = new URLSearchParams();
+  if (start) params.append("start", start);
+  if (end) params.append("end", end);
+  if (categoryId && categoryId !== "all")
+    params.append("categoryId", categoryId);
+
+  // Add the query string if we have parameters
+  if (params.toString()) {
+    url += `?${params.toString()}`;
+  }
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch hive windows: ${response.status}`);
+  }
+
+  return await response.json();
+};
