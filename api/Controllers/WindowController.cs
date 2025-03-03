@@ -61,21 +61,28 @@ namespace Hyv.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<WindowDto>>> GetWindowsByDateRange(
+        public async Task<IActionResult> GetWindows(
             [FromQuery] DateTime start,
             [FromQuery] DateTime end
         )
         {
-            try
+            if (start == default || end == default)
             {
-                string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var windows = await _windowService.GetWindowsByDateRangeAsync(start, end, userId);
-                return Ok(windows);
+                return BadRequest("Both start and end date parameters are required");
             }
-            catch (Exception ex)
+
+            // Get the current user's ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return Unauthorized("User ID not found in token");
             }
+
+            var userId = userIdClaim.Value;
+
+            // Get windows for the current user and specified date range
+            var windows = await _windowService.GetWindowsByDateRangeAsync(start, end, userId);
+            return Ok(windows);
         }
 
         [HttpGet("hive")]
@@ -104,65 +111,35 @@ namespace Hyv.Controllers
             return Ok(hiveWindows);
         }
 
-        [HttpDelete("all")]
-        public async Task<IActionResult> DeleteAllWindows()
+        // Add DELETE endpoint for a specific window
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteWindow(int id)
         {
             try
             {
-                // Get the current authenticated user's ID
+                // Get the current user's ID from claims
                 string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-                // Call the service to delete all windows for this user
-                int deletedCount = await _windowService.DeleteAllWindowsAsync(userId);
+                // Call the service to delete the window
+                await _windowService.DeleteWindowAsync(id, userId);
 
-                // Return success with the count of deleted windows
-                return Ok(
-                    new
-                    {
-                        message = $"Successfully deleted {deletedCount} windows.",
-                        count = deletedCount,
-                    }
-                );
+                // Return success response
+                return Ok(new { message = "Window deleted successfully" });
             }
-            catch (Exception ex)
+            catch (KeyNotFoundException)
             {
-                // Return error response
-                return StatusCode(500, new { error = $"Failed to delete windows: {ex.Message}" });
-            }
-        }
-
-        // Add PUT endpoint for updating a window
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateWindow(int id, [FromBody] WindowDto windowDto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            // Get the current user's ID from claims
-            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            try
-            {
-                var updatedWindow = await _windowService.UpdateWindowAsync(id, windowDto, userId);
-                return Ok(updatedWindow);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { error = ex.Message });
+                // Window not found
+                return NotFound(new { error = "Window not found" });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(403, new { error = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(new { error = ex.Message });
+                // User is not authorized to delete this window
+                return Forbid(ex.Message);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = $"Internal server error: {ex.Message}" });
+                // Any other error
+                return StatusCode(500, new { error = $"Failed to delete window: {ex.Message}" });
             }
         }
     }
