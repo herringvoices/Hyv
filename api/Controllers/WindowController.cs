@@ -3,6 +3,7 @@ using Hyv.DTOs;
 using Hyv.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Hyv.Controllers
 {
@@ -12,10 +13,12 @@ namespace Hyv.Controllers
     public class WindowController : ControllerBase
     {
         private readonly IWindowService _windowService;
+        private readonly ILogger<WindowController> _logger;
 
-        public WindowController(IWindowService windowService)
+        public WindowController(IWindowService windowService, ILogger<WindowController> logger)
         {
             _windowService = windowService;
+            _logger = logger;
         }
 
         [HttpPost]
@@ -109,6 +112,69 @@ namespace Hyv.Controllers
                 categoryId
             );
             return Ok(hiveWindows);
+        }
+
+        // Add DELETE endpoint for a specific window
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteWindow(int id)
+        {
+            try
+            {
+                // Get the current user's ID from claims
+                string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                // Call the service to delete the window
+                await _windowService.DeleteWindowAsync(id, userId);
+
+                // Return success response
+                return Ok(new { message = "Window deleted successfully" });
+            }
+            catch (KeyNotFoundException)
+            {
+                // Window not found
+                return NotFound(new { error = "Window not found" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                // User is not authorized to delete this window
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                // Any other error
+                return StatusCode(500, new { error = $"Failed to delete window: {ex.Message}" });
+            }
+        }
+
+        [HttpPut("{id}")]
+        public async Task<ActionResult<WindowDto>> UpdateWindow(int id, WindowDto windowDto)
+        {
+            try
+            {
+                // Get the current user ID
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                // Call the service to update the window
+                var updatedWindow = await _windowService.UpdateWindowAsync(id, windowDto, userId);
+
+                return Ok(updatedWindow);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound($"Window with ID {id} not found");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating window");
+                return StatusCode(
+                    500,
+                    $"An error occurred while updating the window: {ex.Message}"
+                );
+            }
         }
     }
 }

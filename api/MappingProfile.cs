@@ -149,8 +149,16 @@ public class MappingProfile : Profile
         // ================================
         // 5. WindowVisibility <-> WindowVisibilityDto
         // ================================
-        CreateMap<WindowVisibility, WindowVisibilityDto>();
-        CreateMap<WindowVisibilityDto, WindowVisibility>();
+        CreateMap<WindowVisibility, WindowVisibilityDto>()
+            .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))
+            .ForMember(dest => dest.WindowId, opt => opt.MapFrom(src => src.WindowId))
+            .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category));
+            // Don't map Window property to avoid circular references
+
+        CreateMap<WindowVisibilityDto, WindowVisibility>()
+            .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))
+            .ForMember(dest => dest.Window, opt => opt.Ignore())
+            .ForMember(dest => dest.Category, opt => opt.Ignore());
 
         // ================================
         // 6. Hangout <-> HangoutDto

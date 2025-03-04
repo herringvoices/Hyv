@@ -31,6 +31,37 @@ export const createWindow = async (windowData) => {
   return await response.json();
 };
 
+export const updateWindow = async (id, windowData) => {
+  const response = await fetch(`${apiUrl}/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(windowData),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update window: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+export const deleteWindow = async (id) => {
+  const response = await fetch(`${apiUrl}/${id}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete window: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
 export const getHiveWindows = async (
   start = null,
   end = null,

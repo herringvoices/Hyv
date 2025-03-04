@@ -162,6 +162,7 @@ builder
             .Serialization
             .ReferenceHandler
             .IgnoreCycles;
+        opts.JsonSerializerOptions.MaxDepth = 32; // Reasonable depth limit
     });
 
 // ✅ Add Swagger for API Documentation

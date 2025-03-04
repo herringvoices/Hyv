@@ -23,6 +23,12 @@ namespace Hyv.Services
             DateTime? end = null,
             int? categoryId = null
         );
+
+        // Add update method to interface
+        Task<WindowDto> UpdateWindowAsync(int windowId, WindowDto windowDto, string userId);
+
+        // Add delete method to interface
+        Task<bool> DeleteWindowAsync(int windowId, string userId);
     }
 
     public class WindowService : IWindowService
@@ -139,10 +145,26 @@ namespace Hyv.Services
             string userId
         )
         {
-            // First, delete any windows for this user that have ended (End time is before current time)
             var now = DateTime.UtcNow;
+
+            // Find windows that should be deleted (but only those owned by the user):
+            // 1. Windows that have already ended (End time is before current time)
+            // 2. Windows where the time until start is less than or equal to DaysOfNoticeNeeded
             var expiredWindows = await _dbContext
-                .Windows.Where(w => w.End < now && w.UserId == userId)
+                .Windows.Where(w =>
+                    // Only delete windows that the user owns
+                    w.UserId == userId
+                    && (
+                        // Either the window has already ended
+                        w.End < now
+                        ||
+                        // OR not enough notice time is left for the window
+                        (
+                            w.Start > now // Only future windows
+                            && (w.Start.Date - now.Date).Days <= w.DaysOfNoticeNeeded
+                        )
+                    )
+                )
                 .ToListAsync();
 
             if (expiredWindows.Any())
@@ -151,9 +173,13 @@ namespace Hyv.Services
                 await _dbContext.SaveChangesAsync();
             }
 
-            // Now query windows that fall within the specified date range and belong to the current user
+            // Now query all windows within the date range where the user is a participant
             var windows = await _dbContext
-                .Windows.Where(w => w.Start >= start && w.End <= end && w.UserId == userId)
+                .Windows.Where(w =>
+                    w.Start >= start
+                    && w.End <= end
+                    && w.WindowParticipants.Any(p => p.UserId == userId) // User is a participant
+                )
                 .Include(w => w.User)
                 .Include(w => w.Hangout)
                 .Include(w => w.WindowParticipants)
@@ -288,6 +314,186 @@ namespace Hyv.Services
 
             // Map to DTOs and return
             return _mapper.Map<IEnumerable<WindowDto>>(windows);
+        }
+
+        // Implement window deletion method
+        public async Task<bool> DeleteWindowAsync(int windowId, string userId)
+        {
+            try
+            {
+                // Find the window
+                var window = await _dbContext
+                    .Windows.Include(w => w.WindowParticipants)
+                    .Include(w => w.WindowVisibilities)
+                    .FirstOrDefaultAsync(w => w.Id == windowId);
+
+                if (window == null)
+                {
+                    throw new KeyNotFoundException($"Window with ID {windowId} not found");
+                }
+
+                // Verify ownership
+                if (window.UserId != userId)
+                {
+                    throw new UnauthorizedAccessException(
+                        "You are not authorized to delete this window"
+                    );
+                }
+
+                // Delete related entities first
+                if (window.WindowParticipants?.Any() == true)
+                {
+                    _dbContext.WindowParticipants.RemoveRange(window.WindowParticipants);
+                }
+
+                if (window.WindowVisibilities?.Any() == true)
+                {
+                    _dbContext.WindowVisibilities.RemoveRange(window.WindowVisibilities);
+                }
+
+                // Now delete the window
+                _dbContext.Windows.Remove(window);
+                await _dbContext.SaveChangesAsync();
+
+                return true;
+            }
+            catch (Exception ex)
+                when (ex is not KeyNotFoundException && ex is not UnauthorizedAccessException)
+            {
+                // Re-throw these specific exceptions to be handled by the controller
+                throw new Exception($"Failed to delete window: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<WindowDto> UpdateWindowAsync(
+            int windowId,
+            WindowDto windowDto,
+            string userId
+        )
+        {
+            // Find window and verify ownership
+            var window = await _dbContext
+                .Windows.Include(w => w.WindowParticipants)
+                .Include(w => w.WindowVisibilities)
+                .FirstOrDefaultAsync(w => w.Id == windowId);
+
+            if (window == null)
+            {
+                throw new KeyNotFoundException($"Window with ID {windowId} not found");
+            }
+
+            if (window.UserId != userId)
+            {
+                throw new UnauthorizedAccessException(
+                    "You are not authorized to update this window"
+                );
+            }
+
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Update basic properties
+                window.Start = windowDto.Start;
+                window.End = windowDto.End;
+                window.PreferredActivity =
+                    windowDto.ExtendedProps?.PreferredActivity ?? window.PreferredActivity;
+                window.DaysOfNoticeNeeded =
+                    windowDto.ExtendedProps?.DaysOfNoticeNeeded ?? window.DaysOfNoticeNeeded;
+                window.Active = windowDto.ExtendedProps?.Active ?? window.Active;
+                window.HangoutId = windowDto.ExtendedProps?.HangoutId;
+                window.UpdatedAt = DateTime.UtcNow;
+
+                await _dbContext.SaveChangesAsync();
+
+                // Update participants (removing all except owner and adding new ones)
+                var participantsToRemove = window
+                    .WindowParticipants.Where(p => p.UserId != window.UserId)
+                    .ToList();
+
+                if (participantsToRemove.Any())
+                {
+                    _dbContext.WindowParticipants.RemoveRange(participantsToRemove);
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                // Add new participants from the DTO
+                if (windowDto.ExtendedProps?.Participants != null)
+                {
+                    // Get current participants to avoid duplicates
+                    var existingParticipantIds = window
+                        .WindowParticipants.Select(p => p.UserId)
+                        .ToList();
+
+                    foreach (var participant in windowDto.ExtendedProps.Participants)
+                    {
+                        if (
+                            participant?.UserId != null
+                            && participant.UserId != window.UserId
+                            && // Skip owner (already a participant)
+                            !existingParticipantIds.Contains(participant.UserId)
+                        ) // Skip duplicates
+                        {
+                            _dbContext.WindowParticipants.Add(
+                                new WindowParticipant
+                                {
+                                    WindowId = windowId,
+                                    UserId = participant.UserId,
+                                }
+                            );
+                            existingParticipantIds.Add(participant.UserId);
+                        }
+                    }
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                // Update visibilities (remove all and add new ones)
+                var visibilitiesToRemove = window.WindowVisibilities.ToList();
+                if (visibilitiesToRemove.Any())
+                {
+                    _dbContext.WindowVisibilities.RemoveRange(visibilitiesToRemove);
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                // Add new visibilities
+                if (windowDto.ExtendedProps?.Visibilities != null)
+                {
+                    foreach (var visibility in windowDto.ExtendedProps.Visibilities)
+                    {
+                        if (visibility?.CategoryId > 0)
+                        {
+                            _dbContext.WindowVisibilities.Add(
+                                new WindowVisibility
+                                {
+                                    WindowId = windowId,
+                                    CategoryId = visibility.CategoryId,
+                                }
+                            );
+                        }
+                    }
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                // Reload the updated window with all relationships
+                var updatedWindow = await _dbContext
+                    .Windows.AsNoTracking() // Prevent tracking issues
+                    .Include(w => w.User)
+                    .Include(w => w.Hangout)
+                    .Include(w => w.WindowParticipants)
+                    .ThenInclude(wp => wp.User)
+                    .Include(w => w.WindowVisibilities)
+                    .ThenInclude(wv => wv.Category)
+                    .FirstOrDefaultAsync(w => w.Id == windowId);
+
+                return _mapper.Map<WindowDto>(updatedWindow);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception($"Failed to update window: {ex.Message}", ex);
+            }
         }
     }
 }
