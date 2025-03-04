@@ -207,8 +207,17 @@ public class MappingProfile : Profile
         // 7. HangoutRequest <-> HangoutRequestDto
         // ================================
         CreateMap<HangoutRequest, HangoutRequestDto>()
-            .ForMember(dest => dest.Recipients, opt => opt.MapFrom(src => src.RequestRecipients))
+            .ForMember(
+                dest => dest.Recipients,
+                opt =>
+                    opt.MapFrom(src =>
+                        src.RequestRecipients != null
+                            ? src.RequestRecipients.Select(rr => rr.User).ToList()
+                            : null
+                    )
+            )
             .ForMember(dest => dest.SenderId, opt => opt.MapFrom(src => src.SenderId));
+
         CreateMap<HangoutRequestDto, HangoutRequest>()
             .ForMember(dest => dest.RequestRecipients, opt => opt.Ignore())
             .ForMember(dest => dest.SenderId, opt => opt.MapFrom(src => src.SenderId))

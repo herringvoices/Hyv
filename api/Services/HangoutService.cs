@@ -12,13 +12,6 @@ namespace Hyv.Services
 {
     public interface IHangoutService
     {
-        Task<IEnumerable<HangoutDto>> GetHangoutsByUserIdAsync(
-            string userId,
-            bool? past = null,
-            int? limit = null,
-            int? offset = 0
-        );
-
         Task<HangoutRequestDto> CreateHangoutRequestAsync(HangoutRequestCreateDto createDto);
         // Add other existing methods here
     }
@@ -34,85 +27,29 @@ namespace Hyv.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<HangoutDto>> GetHangoutsByUserIdAsync(
-            string userId,
-            bool? past = null,
-            int? limit = null,
-            int? offset = 0
-        )
-        {
-            var now = DateTime.UtcNow;
-
-            // Start with base query for this user's hangouts
-            var query = _context
-                .HangoutGuests.Where(hg => hg.UserId == userId)
-                .Include(hg => hg.Hangout)
-                .ThenInclude(h => h.HangoutGuests)
-                .ThenInclude(hg => hg.User)
-                .AsQueryable();
-
-            // Filter based on past parameter
-            if (past.HasValue)
-            {
-                if (past.Value)
-                {
-                    // Past hangouts (end date is in the past)
-                    query = query.Where(hg => hg.Hangout.ConfirmedEnd < now);
-                    // Order by most recent first
-                    query = query.OrderByDescending(hg => hg.Hangout.ConfirmedEnd);
-                }
-                else
-                {
-                    // Future hangouts (start date is in the future)
-                    query = query.Where(hg => hg.Hangout.ConfirmedStart > now);
-                    // Order by earliest first
-                    query = query.OrderBy(hg => hg.Hangout.ConfirmedStart);
-                }
-            }
-            else
-            {
-                // All hangouts, ordered by date (future first, then past)
-                query = query
-                    .OrderBy(hg => hg.Hangout.ConfirmedStart < now)
-                    .ThenBy(hg => hg.Hangout.ConfirmedStart);
-            }
-
-            // Apply pagination
-            if (offset.HasValue && offset.Value > 0)
-            {
-                query = query.Skip(offset.Value);
-            }
-
-            if (limit.HasValue && limit.Value > 0)
-            {
-                query = query.Take(limit.Value);
-            }
-
-            // Execute query and map results
-            var hangoutGuests = await query.ToListAsync();
-
-            // Map the hangouts and include guest information
-            var hangoutDtos = hangoutGuests
-                .Select(hg =>
-                {
-                    var hangoutDto = _mapper.Map<HangoutDto>(hg.Hangout);
-                    hangoutDto.Guests = hg
-                        .Hangout.HangoutGuests.Select(g => _mapper.Map<UserDto>(g.User))
-                        .ToList();
-                    return hangoutDto;
-                })
-                .Distinct() // Ensure unique hangouts
-                .ToList();
-
-            return hangoutDtos;
-        }
-
         public async Task<HangoutRequestDto> CreateHangoutRequestAsync(
             HangoutRequestCreateDto createDto
         )
         {
-            // Create the hangout request entity from the DTO
+            // First create a Hangout entity
+            var hangout = new Hangout
+            {
+                Title = createDto.Title,
+                Description = createDto.Description,
+                ConfirmedStart = createDto.ProposedStart ?? DateTime.UtcNow,
+                ConfirmedEnd = createDto.ProposedEnd ?? DateTime.UtcNow.AddHours(1),
+                Active = false,
+            };
+
+            // Add the hangout to the context
+            await _context.Hangouts.AddAsync(hangout);
+            await _context.SaveChangesAsync();
+
+            // Now create the hangout request entity from the DTO
             var hangoutRequest = _mapper.Map<HangoutRequest>(createDto);
+
+            // Associate with the newly created hangout
+            hangoutRequest.HangoutId = hangout.Id;
 
             // Set creation date to now if not provided
             if (hangoutRequest.CreatedAt == default)

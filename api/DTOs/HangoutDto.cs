@@ -11,7 +11,7 @@ namespace Hyv.DTOs
         public DateTime End { get; set; }
         public bool AllDay { get; set; } = false;
 
-        public ExtendedPropsDto ExtendedProps { get; set; } // Custom extra data
+        public ExtendedPropsDto ExtendedProps { get; set; } 
     }
 
     public class ExtendedPropsDto

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { getHiveWindows } from "../services/windowServices";
+import HangoutRequestModal from "../components/hangouts/HangoutRequestModal";
 
 // Import the FullCalendar packages
 import FullCalendar from "@fullcalendar/react";
@@ -23,6 +24,10 @@ export default function Hive() {
 
   // Add a ref to access the calendar API
   const calendarRef = useRef(null);
+
+  // State for hangout request modal
+  const [showHangoutRequestModal, setShowHangoutRequestModal] = useState(false);
+  const [selectedWindow, setSelectedWindow] = useState(null);
 
   // Fetch categories on component mount
   useEffect(() => {
@@ -125,6 +130,24 @@ export default function Hive() {
     }
   };
 
+  // Handle window click to open hangout request modal
+  const handleEventClick = (clickInfo) => {
+    setSelectedWindow(clickInfo.event);
+    setShowHangoutRequestModal(true);
+  };
+
+  // Handle modal close
+  const handleHangoutRequestModalClose = (success) => {
+    setShowHangoutRequestModal(false);
+    setSelectedWindow(null);
+
+    // If hangout request was successfully created, you could add additional logic here
+    // e.g., show a success message, refresh data, etc.
+    if (success) {
+      // Optional success handling
+    }
+  };
+
   return (
     <div className="mx-auto px-2 sm:px-5 mt-2 sm:mt-4">
       <div className="flex justify-between items-center mb-4">
@@ -206,6 +229,7 @@ export default function Hive() {
             weekends={true}
             events={windows}
             datesSet={handleDatesSet}
+            eventClick={handleEventClick} // Add event click handler
             height={isMobile ? "auto" : "auto"}
             contentHeight="auto"
             aspectRatio={isMobile ? 0.8 : 1.35}
@@ -243,6 +267,15 @@ export default function Hive() {
             <span className="visually-hidden">Loading...</span>
           </div>
         </div>
+      )}
+
+      {/* Hangout Request Modal */}
+      {showHangoutRequestModal && (
+        <HangoutRequestModal
+          isOpen={showHangoutRequestModal}
+          onClose={handleHangoutRequestModalClose}
+          windowInfo={selectedWindow}
+        />
       )}
     </div>
   );
