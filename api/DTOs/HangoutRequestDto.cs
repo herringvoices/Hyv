@@ -19,4 +19,9 @@ namespace Hyv.DTOs
         public UserDto? Sender { get; set; }
         public List<UserDto>? Recipients { get; set; }
     }
+
+    public class HangoutRequestCreateDto : HangoutRequestDto
+    {
+        public List<string> RecipientUserIds { get; set; } = new();
+    }
 }

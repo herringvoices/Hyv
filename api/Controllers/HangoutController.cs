@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Hyv.DTOs;
 using Hyv.Services;
@@ -15,36 +16,42 @@ namespace Hyv.Controllers
     {
         private readonly IHangoutService _hangoutService;
 
+        // Fix the constructor syntax error
         public HangoutController(IHangoutService hangoutService)
         {
             _hangoutService = hangoutService;
         }
 
-        /// <summary>
-        /// Get hangouts for a specific user with optional filtering and pagination
-        /// </summary>
-        /// <param name="userId">The user ID to get hangouts for</param>
-        /// <param name="past">When true, returns past hangouts; when false, returns future hangouts; when null, returns all hangouts</param>
-        /// <param name="limit">Max number of hangouts to return</param>
-        /// <param name="offset">Number of hangouts to skip for pagination</param>
-        /// <returns>A collection of hangouts</returns>
-        [HttpGet("user/{userId}")]
-        public async Task<ActionResult<IEnumerable<HangoutDto>>> GetUserHangouts(
-            string userId,
-            [FromQuery] bool? past = null,
-            [FromQuery] int? limit = null,
-            [FromQuery] int? offset = 0
+        [HttpPost("request")]
+        public async Task<ActionResult<HangoutRequestDto>> CreateHangoutRequest(
+            [FromBody] HangoutRequestCreateDto createDto
         )
         {
-            var hangouts = await _hangoutService.GetHangoutsByUserIdAsync(
-                userId,
-                past,
-                limit,
-                offset
-            );
-            return Ok(hangouts);
-        }
+            try
+            {
+                // Set the sender ID to the current user if not provided
+                if (string.IsNullOrEmpty(createDto.SenderId))
+                {
+                    createDto.SenderId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                }
 
-        // Add other endpoints as needed
+                // Debug logging
+                Console.WriteLine(
+                    $"Creating hangout request: Title={createDto.Title}, "
+                        + $"SenderId={createDto.SenderId}, Recipients={string.Join(",", createDto.RecipientUserIds ?? new List<string>())}"
+                );
+
+                var result = await _hangoutService.CreateHangoutRequestAsync(createDto);
+
+                // Update the return since GetUserHangouts no longer exists
+                return CreatedAtAction("CreateHangoutRequest", new { id = result.Id }, result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in CreateHangoutRequest: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                throw;
+            }
+        }
     }
 }

@@ -153,7 +153,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))
             .ForMember(dest => dest.WindowId, opt => opt.MapFrom(src => src.WindowId))
             .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category));
-            // Don't map Window property to avoid circular references
+        // Don't map Window property to avoid circular references
 
         CreateMap<WindowVisibilityDto, WindowVisibility>()
             .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))
@@ -164,8 +164,42 @@ public class MappingProfile : Profile
         // 6. Hangout <-> HangoutDto
         // ================================
         CreateMap<Hangout, HangoutDto>()
-            .ForMember(dest => dest.Guests, opt => opt.Ignore()); // Adjust if you need guest mapping
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.Start, opt => opt.MapFrom(src => src.ConfirmedStart))
+            .ForMember(dest => dest.End, opt => opt.MapFrom(src => src.ConfirmedEnd))
+            .ForMember(dest => dest.AllDay, opt => opt.MapFrom(src => false)) // Default to false, adjust if needed
+            .ForMember(
+                dest => dest.ExtendedProps,
+                opt =>
+                    opt.MapFrom(
+                        (src, dest, destMember, ctx) =>
+                            new ExtendedPropsDto
+                            {
+                                Description = src.Description,
+                                Active = src.Active,
+                                Guests =
+                                    src.HangoutGuests != null
+                                        ? src
+                                            .HangoutGuests.Select(hg =>
+                                                ctx.Mapper.Map<UserDto>(hg.User)
+                                            )
+                                            .ToList()
+                                        : null,
+                            }
+                    )
+            );
+
         CreateMap<HangoutDto, Hangout>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.ConfirmedStart, opt => opt.MapFrom(src => src.Start))
+            .ForMember(dest => dest.ConfirmedEnd, opt => opt.MapFrom(src => src.End))
+            .ForMember(
+                dest => dest.Description,
+                opt => opt.MapFrom(src => src.ExtendedProps.Description)
+            )
+            .ForMember(dest => dest.Active, opt => opt.MapFrom(src => src.ExtendedProps.Active))
             .ForMember(dest => dest.HangoutRequests, opt => opt.Ignore())
             .ForMember(dest => dest.HangoutGuests, opt => opt.Ignore());
 
@@ -173,8 +207,17 @@ public class MappingProfile : Profile
         // 7. HangoutRequest <-> HangoutRequestDto
         // ================================
         CreateMap<HangoutRequest, HangoutRequestDto>()
-            .ForMember(dest => dest.Recipients, opt => opt.MapFrom(src => src.RequestRecipients))
+            .ForMember(
+                dest => dest.Recipients,
+                opt =>
+                    opt.MapFrom(src =>
+                        src.RequestRecipients != null
+                            ? src.RequestRecipients.Select(rr => rr.User).ToList()
+                            : null
+                    )
+            )
             .ForMember(dest => dest.SenderId, opt => opt.MapFrom(src => src.SenderId));
+
         CreateMap<HangoutRequestDto, HangoutRequest>()
             .ForMember(dest => dest.RequestRecipients, opt => opt.Ignore())
             .ForMember(dest => dest.SenderId, opt => opt.MapFrom(src => src.SenderId))
