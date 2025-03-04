@@ -142,10 +142,26 @@ namespace Hyv.Services
             string userId
         )
         {
-            // First, delete any windows for this user that have ended (End time is before current time)
             var now = DateTime.UtcNow;
+
+            // Find windows that should be deleted (but only those owned by the user):
+            // 1. Windows that have already ended (End time is before current time)
+            // 2. Windows where the time until start is less than or equal to DaysOfNoticeNeeded
             var expiredWindows = await _dbContext
-                .Windows.Where(w => w.End < now && w.UserId == userId)
+                .Windows.Where(w =>
+                    // Only delete windows that the user owns
+                    w.UserId == userId
+                    && (
+                        // Either the window has already ended
+                        w.End < now
+                        ||
+                        // OR not enough notice time is left for the window
+                        (
+                            w.Start > now // Only future windows
+                            && (w.Start.Date - now.Date).Days <= w.DaysOfNoticeNeeded
+                        )
+                    )
+                )
                 .ToListAsync();
 
             if (expiredWindows.Any())
@@ -154,9 +170,13 @@ namespace Hyv.Services
                 await _dbContext.SaveChangesAsync();
             }
 
-            // Now query windows that fall within the specified date range and belong to the current user
+            // Now query all windows within the date range where the user is a participant
             var windows = await _dbContext
-                .Windows.Where(w => w.Start >= start && w.End <= end && w.UserId == userId)
+                .Windows.Where(w =>
+                    w.Start >= start
+                    && w.End <= end
+                    && w.WindowParticipants.Any(p => p.UserId == userId) // User is a participant
+                )
                 .Include(w => w.User)
                 .Include(w => w.Hangout)
                 .Include(w => w.WindowParticipants)

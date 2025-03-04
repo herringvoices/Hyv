@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { getWindowsByDateRange } from "../services/windowServices";
+import {
+  getWindowsByDateRange,
+  updateWindow,
+} from "../services/windowServices";
 
 // Import the FullCalendar packages correctly
 import FullCalendar from "@fullcalendar/react";
@@ -141,6 +144,67 @@ export default function Windows() {
     }
   };
 
+  // Handle event resize (when dragging the handles)
+  const handleEventResize = async (resizeInfo) => {
+    try {
+      // Prepare window data for update
+      const windowData = {
+        start: resizeInfo.event.start.toISOString(),
+        end: resizeInfo.event.end.toISOString(),
+        extendedProps: resizeInfo.event.extendedProps,
+      };
+
+      // Call the API to update the window
+      await updateWindow(parseInt(resizeInfo.event.id), windowData);
+      console.log("Window updated after resize");
+    } catch (err) {
+      console.error("Error updating window after resize:", err);
+      // Revert the change if the update failed
+      resizeInfo.revert();
+      setError("Failed to update window. Please try again.");
+    }
+  };
+
+  // Handle event drop (when dragging the entire event)
+  const handleEventDrop = async (dropInfo) => {
+    try {
+      // Prepare window data for update
+      const windowData = {
+        start: dropInfo.event.start.toISOString(),
+        end: dropInfo.event.end.toISOString(),
+        extendedProps: dropInfo.event.extendedProps,
+      };
+
+      // Call the API to update the window
+      await updateWindow(parseInt(dropInfo.event.id), windowData);
+      console.log("Window updated after drop");
+    } catch (err) {
+      console.error("Error updating window after drop:", err);
+      // Revert the change if the update failed
+      dropInfo.revert();
+      setError("Failed to update window. Please try again.");
+    }
+  };
+
+  // Handle event click to edit
+  const handleEventClick = (clickInfo) => {
+    // Get the clicked window's ID
+    const id = parseInt(clickInfo.event.id);
+
+    // Prepare window data for the modal
+    const windowData = {
+      id: id,
+      title: clickInfo.event.title,
+      start: clickInfo.event.start,
+      end: clickInfo.event.end,
+      extendedProps: clickInfo.event.extendedProps,
+    };
+
+    // Open the modal with this data
+    setSelectedDateInfo(windowData);
+    setIsModalOpen(true);
+  };
+
   return (
     <div className="mx-auto px-2 sm:px-5 mt-2 sm:mt-4">
       <h2 className="mb-2 sm:mb-4 text-xl sm:text-2xl">My Windows</h2>
@@ -185,6 +249,9 @@ export default function Windows() {
             aspectRatio={isMobile ? 0.8 : 1.35}
             select={handleDateSelect}
             dateClick={handleDateClick}
+            eventClick={handleEventClick}
+            eventResize={handleEventResize}
+            eventDrop={handleEventDrop}
             eventOverlap={false}
             selectOverlap={(event) => {
               if (currentView === "dayGridMonth") {
@@ -231,11 +298,12 @@ export default function Windows() {
         </div>
       )}
 
-      {/* Window Creation Modal */}
+      {/* Window Creation/Edit Modal */}
       <WindowFormModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
         selectInfo={selectedDateInfo}
+        editWindowId={selectedDateInfo?.id}
       />
     </div>
   );
