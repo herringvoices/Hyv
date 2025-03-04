@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Security.Claims; // Added for ClaimTypes
 using System.Threading.Tasks;
 using Hyv.DTOs;
 using Hyv.Services;
@@ -15,7 +16,7 @@ namespace Hyv.Controllers
     {
         private readonly IHangoutService _hangoutService;
 
-        public HangoutController(IHangoutService hangoutService)
+        public HangoutController(IHangoutService hangoutService) // Fixed constructor syntax
         {
             _hangoutService = hangoutService;
         }
@@ -43,6 +44,30 @@ namespace Hyv.Controllers
                 offset
             );
             return Ok(hangouts);
+        }
+
+        /// <summary>
+        /// Create a new hangout request with multiple recipients
+        /// </summary>
+        /// <param name="createDto">The hangout request data with recipient user IDs</param>
+        /// <returns>The created hangout request</returns>
+        [HttpPost("request")]
+        public async Task<ActionResult<HangoutRequestDto>> CreateHangoutRequest(
+            HangoutRequestCreateDto createDto
+        )
+        {
+            // Set the sender ID to the current user if not provided
+            if (string.IsNullOrEmpty(createDto.SenderId))
+            {
+                createDto.SenderId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            }
+
+            var result = await _hangoutService.CreateHangoutRequestAsync(createDto);
+            return CreatedAtAction(
+                nameof(GetUserHangouts),
+                new { userId = createDto.SenderId },
+                result
+            );
         }
 
         // Add other endpoints as needed
