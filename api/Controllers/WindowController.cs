@@ -3,6 +3,7 @@ using Hyv.DTOs;
 using Hyv.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Hyv.Controllers
 {
@@ -12,10 +13,12 @@ namespace Hyv.Controllers
     public class WindowController : ControllerBase
     {
         private readonly IWindowService _windowService;
+        private readonly ILogger<WindowController> _logger;
 
-        public WindowController(IWindowService windowService)
+        public WindowController(IWindowService windowService, ILogger<WindowController> logger)
         {
             _windowService = windowService;
+            _logger = logger;
         }
 
         [HttpPost]
@@ -140,6 +143,37 @@ namespace Hyv.Controllers
             {
                 // Any other error
                 return StatusCode(500, new { error = $"Failed to delete window: {ex.Message}" });
+            }
+        }
+
+        [HttpPut("{id}")]
+        public async Task<ActionResult<WindowDto>> UpdateWindow(int id, WindowDto windowDto)
+        {
+            try
+            {
+                // Get the current user ID
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                // Call the service to update the window
+                var updatedWindow = await _windowService.UpdateWindowAsync(id, windowDto, userId);
+
+                return Ok(updatedWindow);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound($"Window with ID {id} not found");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating window");
+                return StatusCode(
+                    500,
+                    $"An error occurred while updating the window: {ex.Message}"
+                );
             }
         }
     }

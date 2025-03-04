@@ -24,6 +24,9 @@ namespace Hyv.Services
             int? categoryId = null
         );
 
+        // Add update method to interface
+        Task<WindowDto> UpdateWindowAsync(int windowId, WindowDto windowDto, string userId);
+
         // Add delete method to interface
         Task<bool> DeleteWindowAsync(int windowId, string userId);
     }
@@ -359,6 +362,137 @@ namespace Hyv.Services
             {
                 // Re-throw these specific exceptions to be handled by the controller
                 throw new Exception($"Failed to delete window: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<WindowDto> UpdateWindowAsync(
+            int windowId,
+            WindowDto windowDto,
+            string userId
+        )
+        {
+            // Find window and verify ownership
+            var window = await _dbContext
+                .Windows.Include(w => w.WindowParticipants)
+                .Include(w => w.WindowVisibilities)
+                .FirstOrDefaultAsync(w => w.Id == windowId);
+
+            if (window == null)
+            {
+                throw new KeyNotFoundException($"Window with ID {windowId} not found");
+            }
+
+            if (window.UserId != userId)
+            {
+                throw new UnauthorizedAccessException(
+                    "You are not authorized to update this window"
+                );
+            }
+
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Update basic properties
+                window.Start = windowDto.Start;
+                window.End = windowDto.End;
+                window.PreferredActivity =
+                    windowDto.ExtendedProps?.PreferredActivity ?? window.PreferredActivity;
+                window.DaysOfNoticeNeeded =
+                    windowDto.ExtendedProps?.DaysOfNoticeNeeded ?? window.DaysOfNoticeNeeded;
+                window.Active = windowDto.ExtendedProps?.Active ?? window.Active;
+                window.HangoutId = windowDto.ExtendedProps?.HangoutId;
+                window.UpdatedAt = DateTime.UtcNow;
+
+                await _dbContext.SaveChangesAsync();
+
+                // Update participants (removing all except owner and adding new ones)
+                var participantsToRemove = window
+                    .WindowParticipants.Where(p => p.UserId != window.UserId)
+                    .ToList();
+
+                if (participantsToRemove.Any())
+                {
+                    _dbContext.WindowParticipants.RemoveRange(participantsToRemove);
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                // Add new participants from the DTO
+                if (windowDto.ExtendedProps?.Participants != null)
+                {
+                    // Get current participants to avoid duplicates
+                    var existingParticipantIds = window
+                        .WindowParticipants.Select(p => p.UserId)
+                        .ToList();
+
+                    foreach (var participant in windowDto.ExtendedProps.Participants)
+                    {
+                        if (
+                            participant?.UserId != null
+                            && participant.UserId != window.UserId
+                            && // Skip owner (already a participant)
+                            !existingParticipantIds.Contains(participant.UserId)
+                        ) // Skip duplicates
+                        {
+                            _dbContext.WindowParticipants.Add(
+                                new WindowParticipant
+                                {
+                                    WindowId = windowId,
+                                    UserId = participant.UserId,
+                                }
+                            );
+                            existingParticipantIds.Add(participant.UserId);
+                        }
+                    }
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                // Update visibilities (remove all and add new ones)
+                var visibilitiesToRemove = window.WindowVisibilities.ToList();
+                if (visibilitiesToRemove.Any())
+                {
+                    _dbContext.WindowVisibilities.RemoveRange(visibilitiesToRemove);
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                // Add new visibilities
+                if (windowDto.ExtendedProps?.Visibilities != null)
+                {
+                    foreach (var visibility in windowDto.ExtendedProps.Visibilities)
+                    {
+                        if (visibility?.CategoryId > 0)
+                        {
+                            _dbContext.WindowVisibilities.Add(
+                                new WindowVisibility
+                                {
+                                    WindowId = windowId,
+                                    CategoryId = visibility.CategoryId,
+                                }
+                            );
+                        }
+                    }
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                // Reload the updated window with all relationships
+                var updatedWindow = await _dbContext
+                    .Windows.AsNoTracking() // Prevent tracking issues
+                    .Include(w => w.User)
+                    .Include(w => w.Hangout)
+                    .Include(w => w.WindowParticipants)
+                    .ThenInclude(wp => wp.User)
+                    .Include(w => w.WindowVisibilities)
+                    .ThenInclude(wv => wv.Category)
+                    .FirstOrDefaultAsync(w => w.Id == windowId);
+
+                return _mapper.Map<WindowDto>(updatedWindow);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception($"Failed to update window: {ex.Message}", ex);
             }
         }
     }
