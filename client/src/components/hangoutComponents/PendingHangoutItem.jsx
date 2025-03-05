@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { respondToHangoutRequest } from "../../services/hangoutService";
+import {
+  acceptHangoutRequest,
+  rejectHangoutRequest,
+} from "../../services/hangoutService";
 
 function PendingHangoutItem({ request, refreshRequests }) {
-  const [showModal, setShowModal] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(false);
+  const [windowModal, setWindowModal] = useState(false);
   const [modalText, setModalText] = useState("");
   const [responseType, setResponseType] = useState(null);
 
@@ -13,21 +17,47 @@ function PendingHangoutItem({ request, refreshRequests }) {
       `Are you sure you want to ${actionText} this hangout request from ${request.hangoutRequest.sender.fullName}?`
     );
     setResponseType(response);
-    setShowModal(true);
+    setConfirmModal(true);
   };
 
   const handleConfirm = async () => {
+    setConfirmModal(false);
+
     try {
-      // Use the hangoutRequestId from the request object
-      await respondToHangoutRequest(request.hangoutRequestId, responseType);
-      await refreshRequests();
+      if (responseType === "accept") {
+        // If the request is IsOpen, show window creation modal
+        if (request.hangoutRequest.isOpen) {
+          setWindowModal(true);
+        } else {
+          // If not open, accept without new window
+          await acceptHangoutRequest(request.id, false);
+          await refreshRequests();
+        }
+      } else {
+        // Handle reject
+        await rejectHangoutRequest(request.id);
+        await refreshRequests();
+      }
     } catch (error) {
-      console.error("Failed to respond to hangout request:", error);
+      console.error(`Failed to ${responseType} hangout request:`, error);
     }
-    setShowModal(false);
   };
 
-  const handleCancel = () => setShowModal(false);
+  const handleWindowChoice = async (createWindow) => {
+    setWindowModal(false);
+
+    try {
+      await acceptHangoutRequest(request.id, createWindow);
+      await refreshRequests();
+    } catch (error) {
+      console.error("Failed to accept hangout request:", error);
+    }
+  };
+
+  const handleCancel = () => {
+    setConfirmModal(false);
+    setWindowModal(false);
+  };
 
   // Format dates for better display
   const formatDate = (dateString) => {
@@ -41,7 +71,6 @@ function PendingHangoutItem({ request, refreshRequests }) {
 
   // Get the sender info and request details
   const sender = request.hangoutRequest.sender;
-  // Title and description are directly on the hangoutRequest, not in a nested hangout object
   const title = request.hangoutRequest.title;
   const description = request.hangoutRequest.description;
   const proposedStart = request.hangoutRequest.proposedStart;
@@ -112,8 +141,8 @@ function PendingHangoutItem({ request, refreshRequests }) {
         </button>
       </div>
 
-      {/* Modal Confirmation */}
-      {showModal && (
+      {/* Confirmation Modal */}
+      {confirmModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-primary p-4 rounded-md font-bold max-w-md">
             <p>{modalText}</p>
@@ -129,6 +158,36 @@ function PendingHangoutItem({ request, refreshRequests }) {
                 className="px-4 py-2 bg-dark text-light rounded-md hover:opacity-90"
               >
                 Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Window Creation Modal */}
+      {windowModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-primary p-4 rounded-md font-bold max-w-md">
+            <p>
+              Would you like to create a window in your calendar for this
+              hangout?
+            </p>
+            <p className="text-sm mt-2 text-gray-700">
+              Creating a window will block off this time in your calendar and
+              help your friends see when you're available.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => handleWindowChoice(false)}
+                className="px-4 py-2 bg-secondary text-light rounded-md hover:opacity-90"
+              >
+                No, Just Accept
+              </button>
+              <button
+                onClick={() => handleWindowChoice(true)}
+                className="px-4 py-2 bg-green-700 text-light rounded-md hover:opacity-90"
+              >
+                Yes, Create Window
               </button>
             </div>
           </div>
