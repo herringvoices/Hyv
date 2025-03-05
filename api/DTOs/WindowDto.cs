@@ -4,7 +4,7 @@ public class WindowDto
 {
     // FullCalendar expects a string ID
     public string? Id { get; set; }
-    public string Title
+    public string? Title
     {
         get
         {
