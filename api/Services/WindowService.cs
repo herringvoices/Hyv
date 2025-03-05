@@ -371,7 +371,7 @@ namespace Hyv.Services
             string userId
         )
         {
-            // Find window and verify ownership
+            // Find window and verify authorization
             var window = await _dbContext
                 .Windows.Include(w => w.WindowParticipants)
                 .Include(w => w.WindowVisibilities)
@@ -382,7 +382,11 @@ namespace Hyv.Services
                 throw new KeyNotFoundException($"Window with ID {windowId} not found");
             }
 
-            if (window.UserId != userId)
+            // Check if user is either the owner or a participant
+            bool isOwner = window.UserId == userId;
+            bool isParticipant = window.WindowParticipants.Any(wp => wp.UserId == userId);
+
+            if (!isOwner && !isParticipant)
             {
                 throw new UnauthorizedAccessException(
                     "You are not authorized to update this window"
@@ -403,6 +407,22 @@ namespace Hyv.Services
                 window.Active = windowDto.ExtendedProps?.Active ?? window.Active;
                 window.HangoutId = windowDto.ExtendedProps?.HangoutId;
                 window.UpdatedAt = DateTime.UtcNow;
+
+                // Check if this window is associated with a hangout
+                if (window.HangoutId.HasValue)
+                {
+                    // Find and update the associated hangout
+                    var hangout = await _dbContext.Hangouts.FirstOrDefaultAsync(h =>
+                        h.Id == window.HangoutId.Value
+                    );
+
+                    if (hangout != null)
+                    {
+                        // Update the hangout's start and end times to match the window
+                        hangout.ConfirmedStart = window.Start;
+                        hangout.ConfirmedEnd = window.End;
+                    }
+                }
 
                 await _dbContext.SaveChangesAsync();
 

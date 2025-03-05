@@ -17,13 +17,17 @@ namespace Hyv.Services
         Task<HangoutRequestDto> CreateHangoutRequestAsync(HangoutRequestCreateDto createDto);
         Task<List<HangoutRequestRecipientDto>> GetPendingHangoutRequestRecipientsAsync();
         Task<List<HangoutRequestRecipientDto>> GetPendingHangoutRequestsForUserAsync(string userId);
-
         Task<bool> HangoutRejectAsync(int hangoutRequestRecipientId, string userId);
         Task<HangoutRequestRecipientDto> HangoutAcceptAsync(
             int hangoutRequestRecipientId,
             string userId
         );
         Task<WindowDto> HangoutAcceptCleanup(int hangoutId, string userId, bool createNewWindow);
+
+        Task<bool> LeaveHangoutAsync(int hangoutId, string userId);
+
+        // Add new update method
+        Task<HangoutDto> UpdateHangoutAsync(int hangoutId, HangoutDto hangoutDto, string userId);
     }
 
     public class HangoutService : IHangoutService
@@ -389,6 +393,52 @@ namespace Hyv.Services
             }
         }
 
+        public async Task<bool> LeaveHangoutAsync(int hangoutId, string userId)
+        {
+            // Find the hangout guest entry for this user
+            var hangoutGuest = await _context.HangoutGuests.FirstOrDefaultAsync(hg =>
+                hg.HangoutId == hangoutId && hg.UserId == userId
+            );
+
+            if (hangoutGuest == null)
+            {
+                throw new KeyNotFoundException(
+                    $"User is not a guest of hangout with ID {hangoutId}"
+                );
+            }
+
+            // Remove the hangout guest entry
+            _context.HangoutGuests.Remove(hangoutGuest);
+
+            // Also check if there's a window participant entry for this hangout
+            var hangoutWindow = await _context
+                .Windows.Include(w => w.WindowParticipants)
+                .FirstOrDefaultAsync(w => w.HangoutId == hangoutId);
+
+            if (hangoutWindow != null)
+            {
+                // Find the participant entry for this user
+                var participantEntry = hangoutWindow.WindowParticipants.FirstOrDefault(wp =>
+                    wp.UserId == userId
+                );
+
+                if (participantEntry != null)
+                {
+                    // Remove the participant from the window
+                    _context.WindowParticipants.Remove(participantEntry);
+
+                    // If there are no participants left, consider removing the window entirely
+                    if (hangoutWindow.WindowParticipants.Count <= 1)
+                    {
+                        _context.Windows.Remove(hangoutWindow);
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         // Helper method to handle conflicting windows for a user
         private async Task HandleConflictingWindows(Hangout hangout, string userId)
         {
@@ -420,6 +470,71 @@ namespace Hyv.Services
                     // If this is the only participant, remove the entire window
                     _context.Windows.Remove(window);
                 }
+            }
+        }
+
+        public async Task<HangoutDto> UpdateHangoutAsync(
+            int hangoutId,
+            HangoutDto hangoutDto,
+            string userId
+        )
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Find the hangout
+                var hangout = await _context
+                    .Hangouts.Include(h => h.HangoutRequests)
+                    .Include(h => h.HangoutGuests)
+                    .FirstOrDefaultAsync(h => h.Id == hangoutId);
+
+                if (hangout == null)
+                {
+                    throw new KeyNotFoundException($"Hangout with ID {hangoutId} not found");
+                }
+
+                // Check if user is authorized - either the creator or a guest
+                var isCreator = hangout.HangoutRequests.Any(hr => hr.SenderId == userId);
+                var isGuest = hangout.HangoutGuests.Any(hg => hg.UserId == userId);
+
+                if (!isCreator && !isGuest)
+                {
+                    throw new UnauthorizedAccessException(
+                        "You are not authorized to update this hangout"
+                    );
+                }
+
+                // Update properties
+                hangout.Title = hangoutDto.Title ?? hangout.Title;
+                hangout.Description = hangoutDto.ExtendedProps?.Description ?? hangout.Description;
+                hangout.ConfirmedStart = hangoutDto.Start;
+                hangout.ConfirmedEnd = hangoutDto.End;
+                hangout.Active = hangoutDto.ExtendedProps?.Active ?? hangout.Active;
+
+                // Update any windows associated with this hangout
+                var associatedWindows = await _context
+                    .Windows.Where(w => w.HangoutId == hangoutId)
+                    .ToListAsync();
+
+                foreach (var window in associatedWindows)
+                {
+                    window.Start = hangout.ConfirmedStart;
+                    window.End = hangout.ConfirmedEnd;
+                    window.Title = hangout.Title;
+                    window.PreferredActivity = hangout.Description;
+                    window.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // Return the updated hangout
+                return _mapper.Map<HangoutDto>(hangout);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw;
             }
         }
     }

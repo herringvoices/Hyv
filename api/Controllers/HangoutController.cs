@@ -148,5 +148,54 @@ namespace Hyv.Controllers
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
+
+        [HttpDelete("{hangoutId}/leave")]
+        public async Task<ActionResult> LeaveHangout(int hangoutId)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                await _hangoutService.LeaveHangoutAsync(hangoutId, userId);
+                return Ok(new { message = "Successfully left the hangout" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPut("{hangoutId}")]
+        public async Task<ActionResult<HangoutDto>> UpdateHangout(
+            int hangoutId,
+            [FromBody] HangoutDto hangoutDto
+        )
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var updatedHangout = await _hangoutService.UpdateHangoutAsync(
+                    hangoutId,
+                    hangoutDto,
+                    userId
+                );
+                return Ok(updatedHangout);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
     }
 }

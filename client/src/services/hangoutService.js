@@ -241,3 +241,65 @@ export const rejectHangoutRequest = async (recipientId) => {
     throw error;
   }
 };
+
+/**
+ * Leave a hangout
+ * @param {number} hangoutId - ID of the hangout to leave
+ * @returns {Promise<Object>} - Promise resolving to success message
+ */
+export const leaveHangout = async (hangoutId) => {
+  const url = `${apiUrl}/${hangoutId}/leave`;
+
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to leave hangout: ${response.status} - ${errorText}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error leaving hangout:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update a hangout
+ * @param {number} hangoutId - ID of the hangout to update
+ * @param {Object} hangoutData - The updated hangout data
+ * @returns {Promise<Object>} - Promise resolving to the updated hangout
+ */
+export const updateHangout = async (hangoutId, hangoutData) => {
+  const url = `${apiUrl}/${hangoutId}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(hangoutData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to update hangout: ${response.status} - ${errorText}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error updating hangout:", error);
+    throw error;
+  }
+};
