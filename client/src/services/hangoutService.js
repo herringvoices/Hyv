@@ -51,6 +51,34 @@ export const getUserHangouts = async (
 };
 
 /**
+ * Fetch pending hangout requests for the current user
+ * @returns {Promise<Array>} - Promise resolving to an array of hangout request objects
+ */
+export const getPendingHangoutRequests = async () => {
+  const url = `${apiUrl}/pending-requests`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch pending hangout requests: ${response.status}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching pending hangout requests:", error);
+    throw error;
+  }
+};
+
+/**
  * Create a new hangout request with multiple recipients
  * @param {Object} requestData - The hangout request data with recipient user IDs
  * @param {string} [requestData.senderId] - ID of the user sending the request (optional, defaults to current user)
@@ -99,19 +127,24 @@ export const createHangoutRequest = async (requestData) => {
 export const respondToHangoutRequest = async (requestId, response) => {
   const url = `${apiUrl}/request/${requestId}/respond`;
 
-  const responseData = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ response }),
-  });
+  try {
+    const responseData = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ response }),
+    });
 
-  if (!responseData.ok) {
-    throw new Error(
-      `Failed to respond to hangout request: ${responseData.status}`
-    );
+    if (!responseData.ok) {
+      throw new Error(
+        `Failed to respond to hangout request: ${responseData.status}`
+      );
+    }
+
+    return await responseData.json();
+  } catch (error) {
+    console.error("Error responding to hangout request:", error);
+    throw error;
   }
-
-  return await responseData.json();
 };

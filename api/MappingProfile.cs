@@ -231,7 +231,32 @@ public class MappingProfile : Profile
             .ForMember(
                 dest => dest.RecipientStatus,
                 opt => opt.MapFrom(src => src.RecipientStatus.ToString())
+            )
+            .ForMember(
+                dest => dest.Invitations,
+                opt =>
+                    opt.MapFrom(
+                        (src, dest, destMember, ctx) =>
+                        {
+                            // Skip if HangoutRequest or its RequestRecipients is null
+                            if (src.HangoutRequest?.RequestRecipients == null)
+                                return null;
+
+                            // Get all recipients for the same hangout request
+                            return src
+                                .HangoutRequest.RequestRecipients
+                                // Exclude the current recipient
+                                .Where(rr => rr.Id != src.Id)
+                                .Select(rr => new InvitationDto
+                                {
+                                    RecipientName = rr.User?.FullName ?? "Unknown User",
+                                    RecipientStatus = rr.RecipientStatus.ToString(),
+                                })
+                                .ToList();
+                        }
+                    )
             );
+
         CreateMap<HangoutRequestRecipientDto, HangoutRequestRecipient>()
             .ForMember(
                 dest => dest.RecipientStatus,
