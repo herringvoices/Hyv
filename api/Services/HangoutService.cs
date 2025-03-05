@@ -17,7 +17,13 @@ namespace Hyv.Services
         Task<HangoutRequestDto> CreateHangoutRequestAsync(HangoutRequestCreateDto createDto);
         Task<List<HangoutRequestRecipientDto>> GetPendingHangoutRequestRecipientsAsync();
         Task<List<HangoutRequestRecipientDto>> GetPendingHangoutRequestsForUserAsync(string userId);
-        // Add other existing methods here
+
+        Task<bool> HangoutRejectAsync(int hangoutRequestRecipientId, string userId);
+        Task<HangoutRequestRecipientDto> HangoutAcceptAsync(
+            int hangoutRequestRecipientId,
+            string userId
+        );
+        Task<WindowDto> HangoutAcceptCleanup(int hangoutId, string userId, bool createNewWindow);
     }
 
     public class HangoutService : IHangoutService
@@ -169,6 +175,212 @@ namespace Hyv.Services
             return _mapper.Map<List<HangoutRequestRecipientDto>>(pendingRequests);
         }
 
-        // Add other existing methods here
+        public async Task<bool> HangoutRejectAsync(int hangoutRequestRecipientId, string userId)
+        {
+            // Verify recipient exists and belongs to the user
+            var recipient = await _context.HangoutRequestRecipients.FirstOrDefaultAsync(r =>
+                r.Id == hangoutRequestRecipientId && r.UserId == userId
+            );
+
+            if (recipient == null)
+            {
+                throw new KeyNotFoundException(
+                    $"Hangout request recipient with ID {hangoutRequestRecipientId} not found or doesn't belong to the current user"
+                );
+            }
+
+            // Delete the recipient entry
+            _context.HangoutRequestRecipients.Remove(recipient);
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<HangoutRequestRecipientDto> HangoutAcceptAsync(
+            int hangoutRequestRecipientId,
+            string userId
+        )
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Find recipient and verify it belongs to the user
+                var recipient = await _context
+                    .HangoutRequestRecipients.Include(r => r.HangoutRequest)
+                    .Include(r => r.User)
+                    .FirstOrDefaultAsync(r =>
+                        r.Id == hangoutRequestRecipientId && r.UserId == userId
+                    );
+
+                if (recipient == null)
+                {
+                    throw new KeyNotFoundException(
+                        $"Hangout request recipient with ID {hangoutRequestRecipientId} not found or doesn't belong to the current user"
+                    );
+                }
+
+                // Update status to Accepted
+                recipient.RecipientStatus = Status.Accepted;
+                recipient.RespondedAt = DateTime.UtcNow;
+
+                // Get the associated hangout
+                var hangout = await _context.Hangouts.FirstOrDefaultAsync(h =>
+                    h.Id == recipient.HangoutRequest.HangoutId
+                );
+
+                if (hangout != null)
+                {
+                    // Add user as a HangoutGuest
+                    var hangoutGuest = new HangoutGuest
+                    {
+                        HangoutId = hangout.Id,
+                        UserId = userId,
+                        JoinedAt = DateTime.UtcNow,
+                    };
+
+                    await _context.HangoutGuests.AddAsync(hangoutGuest);
+
+                    // Update hangout active status
+                    hangout.Active = true;
+                    await _context.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                // Return the updated recipient
+                return _mapper.Map<HangoutRequestRecipientDto>(recipient);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        public async Task<WindowDto> HangoutAcceptCleanup(
+            int hangoutId,
+            string userId,
+            bool createNewWindow
+        )
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Get the hangout to access its timeframe
+                var hangout = await _context.Hangouts.FirstOrDefaultAsync(h => h.Id == hangoutId);
+
+                if (hangout == null)
+                {
+                    throw new KeyNotFoundException($"Hangout with ID {hangoutId} not found");
+                }
+
+                // Find user's windows during the hangout timeframe
+                var userWindows = await _context
+                    .Windows.Include(w => w.WindowParticipants)
+                    .Where(w =>
+                        w.Start < hangout.ConfirmedEnd
+                        && w.End > hangout.ConfirmedStart
+                        && w.WindowParticipants.Any(wp => wp.UserId == userId)
+                    )
+                    .ToListAsync();
+
+                foreach (var window in userWindows)
+                {
+                    // Check if the window has other participants
+                    var hasOtherParticipants = window.WindowParticipants.Any(wp =>
+                        wp.UserId != userId
+                    );
+
+                    if (hasOtherParticipants)
+                    {
+                        // Remove only this user's participant entry
+                        var userParticipant = window.WindowParticipants.First(wp =>
+                            wp.UserId == userId
+                        );
+                        _context.WindowParticipants.Remove(userParticipant);
+                    }
+                    else
+                    {
+                        // If this is the only participant, remove the entire window
+                        _context.Windows.Remove(window);
+                    }
+                }
+
+                // Create new window if requested
+                WindowDto newWindowDto = null;
+
+                if (createNewWindow)
+                {
+                    // Check if there's already a window associated with this hangout
+                    var existingWindow = await _context
+                        .Windows.Include(w => w.WindowParticipants)
+                        .FirstOrDefaultAsync(w => w.HangoutId == hangoutId);
+
+                    if (existingWindow != null)
+                    {
+                        // Add user as participant to the existing window if not already a participant
+                        if (!existingWindow.WindowParticipants.Any(wp => wp.UserId == userId))
+                        {
+                            existingWindow.WindowParticipants.Add(
+                                new WindowParticipant { UserId = userId }
+                            );
+                            await _context.SaveChangesAsync();
+
+                            // Reload with relationships for mapping
+                            var updatedWindow = await _context
+                                .Windows.Include(w => w.User)
+                                .Include(w => w.Hangout)
+                                .Include(w => w.WindowParticipants)
+                                .ThenInclude(wp => wp.User)
+                                .FirstOrDefaultAsync(w => w.Id == existingWindow.Id);
+
+                            newWindowDto = _mapper.Map<WindowDto>(updatedWindow);
+                        }
+                    }
+                    else
+                    {
+                        // Create a new window linked to this hangout
+                        var newWindow = new Window
+                        {
+                            Title = hangout.Title,
+                            Start = hangout.ConfirmedStart,
+                            End = hangout.ConfirmedEnd,
+                            UserId = userId,
+                            Active = true,
+                            HangoutId = hangoutId, // Link to the hangout
+                            PreferredActivity = hangout.Description, // Use description as preferred activity
+                            DaysOfNoticeNeeded = 0, // No notice needed since this is for a confirmed hangout
+                            WindowParticipants = new List<WindowParticipant>
+                            {
+                                new WindowParticipant { UserId = userId },
+                            },
+                        };
+
+                        _context.Windows.Add(newWindow);
+                        await _context.SaveChangesAsync();
+
+                        // Reload with relationships for mapping
+                        var createdWindow = await _context
+                            .Windows.Include(w => w.User)
+                            .Include(w => w.Hangout)
+                            .Include(w => w.WindowParticipants)
+                            .ThenInclude(wp => wp.User)
+                            .FirstOrDefaultAsync(w => w.Id == newWindow.Id);
+
+                        newWindowDto = _mapper.Map<WindowDto>(createdWindow);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return newWindowDto; // Returns null if no window was created or user added to existing
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
     }
 }

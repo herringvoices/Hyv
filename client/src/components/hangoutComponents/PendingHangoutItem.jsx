@@ -8,12 +8,7 @@ function PendingHangoutItem({ request, refreshRequests }) {
   const [responseType, setResponseType] = useState(null);
 
   const handleResponseClick = (response) => {
-    const actionText =
-      response === "accept"
-        ? "accept"
-        : response === "maybe"
-        ? "tentatively accept"
-        : "decline";
+    const actionText = response === "accept" ? "accept" : "decline";
     setModalText(
       `Are you sure you want to ${actionText} this hangout request from ${request.hangoutRequest.sender.fullName}?`
     );
@@ -57,7 +52,6 @@ function PendingHangoutItem({ request, refreshRequests }) {
 
   return (
     <li className="flex flex-col my-3 text-dark bg-primary rounded-md">
-
       {/* Sender info */}
       <div className="flex items-center mb-2 bg-dark border border-primary rounded-tl-md rounded-tr-md text-primary">
         <div className="m-2">
@@ -109,12 +103,7 @@ function PendingHangoutItem({ request, refreshRequests }) {
         >
           Decline
         </button>
-        <button
-          onClick={() => handleResponseClick("maybe")}
-          className="px-4 py-2 bg-dark text-light rounded-md hover:opacity-90"
-        >
-          Maybe
-        </button>
+
         <button
           onClick={() => handleResponseClick("accept")}
           className="px-4 py-2 bg-green-700 text-light rounded-md hover:opacity-90"

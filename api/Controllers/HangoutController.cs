@@ -92,5 +92,53 @@ namespace Hyv.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
+
+        [HttpPost("request/recipient/{id}/accept")]
+        public async Task<ActionResult<HangoutRequestRecipientDto>> AcceptHangoutRequest(
+            int id,
+            [FromQuery] bool newWindow = false
+        )
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                // First accept the request
+                var acceptedRequest = await _hangoutService.HangoutAcceptAsync(id, userId);
+
+                // Then perform cleanup based on newWindow parameter
+                var hangoutId = acceptedRequest.HangoutRequestId; 
+                await _hangoutService.HangoutAcceptCleanup(hangoutId, userId, newWindow);
+
+                return Ok(acceptedRequest);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPost("request/recipient/{id}/reject")]
+        public async Task<ActionResult> RejectHangoutRequest(int id)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                await _hangoutService.HangoutRejectAsync(id, userId);
+                return Ok(new { message = "Hangout request rejected successfully" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
     }
 }
