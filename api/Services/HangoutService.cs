@@ -264,44 +264,31 @@ namespace Hyv.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Get the hangout to access its timeframe
-                var hangout = await _context.Hangouts.FirstOrDefaultAsync(h => h.Id == hangoutId);
+                // Get the hangout with its request info to identify the sender
+                var hangout = await _context
+                    .Hangouts.Include(h => h.HangoutRequests)
+                    .FirstOrDefaultAsync(h => h.Id == hangoutId);
 
                 if (hangout == null)
                 {
                     throw new KeyNotFoundException($"Hangout with ID {hangoutId} not found");
                 }
 
-                // Find user's windows during the hangout timeframe
-                var userWindows = await _context
-                    .Windows.Include(w => w.WindowParticipants)
-                    .Where(w =>
-                        w.Start < hangout.ConfirmedEnd
-                        && w.End > hangout.ConfirmedStart
-                        && w.WindowParticipants.Any(wp => wp.UserId == userId)
-                    )
-                    .ToListAsync();
-
-                foreach (var window in userWindows)
+                // Get the sender ID from the HangoutRequest
+                string senderId = null;
+                var hangoutRequest = hangout.HangoutRequests.FirstOrDefault();
+                if (hangoutRequest != null)
                 {
-                    // Check if the window has other participants
-                    var hasOtherParticipants = window.WindowParticipants.Any(wp =>
-                        wp.UserId != userId
-                    );
+                    senderId = hangoutRequest.SenderId;
+                }
 
-                    if (hasOtherParticipants)
-                    {
-                        // Remove only this user's participant entry
-                        var userParticipant = window.WindowParticipants.First(wp =>
-                            wp.UserId == userId
-                        );
-                        _context.WindowParticipants.Remove(userParticipant);
-                    }
-                    else
-                    {
-                        // If this is the only participant, remove the entire window
-                        _context.Windows.Remove(window);
-                    }
+                // Process user's conflicting windows
+                await HandleConflictingWindows(hangout, userId);
+
+                // Process sender's conflicting windows (if sender is not the current user)
+                if (senderId != null && senderId != userId)
+                {
+                    await HandleConflictingWindows(hangout, senderId);
                 }
 
                 // Create new window if requested
@@ -316,24 +303,37 @@ namespace Hyv.Services
 
                     if (existingWindow != null)
                     {
-                        // Add user as participant to the existing window if not already a participant
+                        // Add current user as participant if not already
                         if (!existingWindow.WindowParticipants.Any(wp => wp.UserId == userId))
                         {
                             existingWindow.WindowParticipants.Add(
                                 new WindowParticipant { UserId = userId }
                             );
-                            await _context.SaveChangesAsync();
-
-                            // Reload with relationships for mapping
-                            var updatedWindow = await _context
-                                .Windows.Include(w => w.User)
-                                .Include(w => w.Hangout)
-                                .Include(w => w.WindowParticipants)
-                                .ThenInclude(wp => wp.User)
-                                .FirstOrDefaultAsync(w => w.Id == existingWindow.Id);
-
-                            newWindowDto = _mapper.Map<WindowDto>(updatedWindow);
                         }
+
+                        // Add sender as participant if not already (and if sender is not the current user)
+                        if (
+                            senderId != null
+                            && senderId != userId
+                            && !existingWindow.WindowParticipants.Any(wp => wp.UserId == senderId)
+                        )
+                        {
+                            existingWindow.WindowParticipants.Add(
+                                new WindowParticipant { UserId = senderId }
+                            );
+                        }
+
+                        await _context.SaveChangesAsync();
+
+                        // Reload with relationships for mapping
+                        var updatedWindow = await _context
+                            .Windows.Include(w => w.User)
+                            .Include(w => w.Hangout)
+                            .Include(w => w.WindowParticipants)
+                            .ThenInclude(wp => wp.User)
+                            .FirstOrDefaultAsync(w => w.Id == existingWindow.Id);
+
+                        newWindowDto = _mapper.Map<WindowDto>(updatedWindow);
                     }
                     else
                     {
@@ -345,14 +345,22 @@ namespace Hyv.Services
                             End = hangout.ConfirmedEnd,
                             UserId = userId,
                             Active = true,
-                            HangoutId = hangoutId, // Link to the hangout
-                            PreferredActivity = hangout.Description, // Use description as preferred activity
-                            DaysOfNoticeNeeded = 0, // No notice needed since this is for a confirmed hangout
+                            HangoutId = hangoutId,
+                            PreferredActivity = hangout.Description,
+                            DaysOfNoticeNeeded = 0,
                             WindowParticipants = new List<WindowParticipant>
                             {
                                 new WindowParticipant { UserId = userId },
                             },
                         };
+
+                        // Add sender as participant (if sender is not the current user)
+                        if (senderId != null && senderId != userId)
+                        {
+                            newWindow.WindowParticipants.Add(
+                                new WindowParticipant { UserId = senderId }
+                            );
+                        }
 
                         _context.Windows.Add(newWindow);
                         await _context.SaveChangesAsync();
@@ -372,12 +380,46 @@ namespace Hyv.Services
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return newWindowDto; // Returns null if no window was created or user added to existing
+                return newWindowDto;
             }
             catch
             {
                 await transaction.RollbackAsync();
                 throw;
+            }
+        }
+
+        // Helper method to handle conflicting windows for a user
+        private async Task HandleConflictingWindows(Hangout hangout, string userId)
+        {
+            // Find user's windows during the hangout timeframe
+            var userWindows = await _context
+                .Windows.Include(w => w.WindowParticipants)
+                .Where(w =>
+                    w.Start < hangout.ConfirmedEnd
+                    && w.End > hangout.ConfirmedStart
+                    && w.WindowParticipants.Any(wp => wp.UserId == userId)
+                )
+                .ToListAsync();
+
+            foreach (var window in userWindows)
+            {
+                // Check if the window has other participants
+                var hasOtherParticipants = window.WindowParticipants.Any(wp => wp.UserId != userId);
+
+                if (hasOtherParticipants)
+                {
+                    // Remove only this user's participant entry
+                    var userParticipant = window.WindowParticipants.First(wp =>
+                        wp.UserId == userId
+                    );
+                    _context.WindowParticipants.Remove(userParticipant);
+                }
+                else
+                {
+                    // If this is the only participant, remove the entire window
+                    _context.Windows.Remove(window);
+                }
             }
         }
     }

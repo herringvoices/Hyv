@@ -106,8 +106,16 @@ namespace Hyv.Controllers
                 // First accept the request
                 var acceptedRequest = await _hangoutService.HangoutAcceptAsync(id, userId);
 
+                // Get the HangoutId, not the HangoutRequestId
+                int hangoutId = 0;
+
+                // The HangoutRequest should be included in the returned DTO
+                if (acceptedRequest.HangoutRequest != null)
+                {
+                    hangoutId = acceptedRequest.HangoutRequest.HangoutId;
+                }
+
                 // Then perform cleanup based on newWindow parameter
-                var hangoutId = acceptedRequest.HangoutRequestId; 
                 await _hangoutService.HangoutAcceptCleanup(hangoutId, userId, newWindow);
 
                 return Ok(acceptedRequest);

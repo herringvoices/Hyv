@@ -3,11 +3,12 @@ namespace Hyv.DTOs;
 public class WindowDto
 {
     // FullCalendar expects a string ID
+    public string? Id { get; set; }
     public string Title
     {
         get
         {
-            if (ExtendedProps?.HangoutId == 0)
+            if (ExtendedProps?.HangoutId == null || ExtendedProps.HangoutId == 0)
             {
                 // Build a comma-separated list of participant full names.
                 // Add null checks to prevent exceptions
