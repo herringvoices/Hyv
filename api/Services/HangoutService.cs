@@ -207,6 +207,7 @@ namespace Hyv.Services
                 // Find recipient and verify it belongs to the user
                 var recipient = await _context
                     .HangoutRequestRecipients.Include(r => r.HangoutRequest)
+                    .ThenInclude(hr => hr.Hangout) // Make sure to include the Hangout
                     .Include(r => r.User)
                     .FirstOrDefaultAsync(r =>
                         r.Id == hangoutRequestRecipientId && r.UserId == userId
@@ -221,19 +222,16 @@ namespace Hyv.Services
 
                 // Update status to Accepted
                 recipient.RecipientStatus = Status.Accepted;
-                recipient.RespondedAt = DateTime.UtcNow;
 
-                // Get the associated hangout
-                var hangout = await _context.Hangouts.FirstOrDefaultAsync(h =>
-                    h.Id == recipient.HangoutRequest.HangoutId
-                );
+                // Get the associated hangout using proper navigation
+                var hangout = recipient.HangoutRequest?.Hangout;
 
                 if (hangout != null)
                 {
                     // Add user as a HangoutGuest
                     var hangoutGuest = new HangoutGuest
                     {
-                        HangoutId = hangout.Id,
+                        HangoutId = hangout.Id, // This is the correct Hangout.Id
                         UserId = userId,
                         JoinedAt = DateTime.UtcNow,
                     };

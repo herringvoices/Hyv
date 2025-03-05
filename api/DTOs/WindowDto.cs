@@ -2,31 +2,40 @@ namespace Hyv.DTOs;
 
 public class WindowDto
 {
-    public string? Id { get; set; } // FullCalendar expects a string ID
+    // FullCalendar expects a string ID
     public string Title
     {
         get
         {
-            // Build a comma-separated list of participant full names.
-            // Add null checks to prevent exceptions
-            var participantNames = string.Empty;
-            if (ExtendedProps?.Participants != null)
+            if (ExtendedProps?.HangoutId == 0)
             {
-                participantNames = string.Join(
-                    ", ",
-                    ExtendedProps
-                        .Participants.Where(p => p?.User != null)
-                        .Select(p => $"{p.User.FirstName} {p.User.LastName}".Trim())
-                );
+                // Build a comma-separated list of participant full names.
+                // Add null checks to prevent exceptions
+                var participantNames = string.Empty;
+                if (ExtendedProps?.Participants != null)
+                {
+                    participantNames = string.Join(
+                        ", ",
+                        ExtendedProps
+                            .Participants.Where(p => p?.User != null)
+                            .Select(p => $"{p.User.FirstName} {p.User.LastName}".Trim())
+                    );
+                }
+
+                // Retrieve the preferred activity if available.
+                var activity = ExtendedProps?.PreferredActivity ?? string.Empty;
+
+                // Combine the pieces using bullet points with spaces.
+                return $"{participantNames} • {activity}";
             }
-
-            // Retrieve the preferred activity if available.
-            var activity = ExtendedProps?.PreferredActivity ?? string.Empty;
-
-            // Combine the pieces using bullet points with spaces.
-            return $"{participantNames} • {activity}";
+            else
+            {
+                return _title;
+            }
         }
+        set { _title = value; }
     }
+    private string _title;
     public DateTime Start { get; set; }
     public DateTime End { get; set; }
 
