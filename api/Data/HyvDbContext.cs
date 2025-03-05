@@ -167,7 +167,7 @@ namespace Hyv.Data
                 .Entity<HangoutRequest>()
                 .HasMany(hr => hr.Recipients)
                 .WithOne()
-                .HasForeignKey(hg => hg.HangoutId)
+                // Remove the incorrect foreign key specification
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Configure HangoutRequestRecipient relationships

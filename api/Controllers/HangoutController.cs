@@ -92,5 +92,110 @@ namespace Hyv.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
+
+        [HttpPost("request/recipient/{id}/accept")]
+        public async Task<ActionResult<HangoutRequestRecipientDto>> AcceptHangoutRequest(
+            int id,
+            [FromQuery] bool newWindow = false
+        )
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                // First accept the request
+                var acceptedRequest = await _hangoutService.HangoutAcceptAsync(id, userId);
+
+                // Get the HangoutId, not the HangoutRequestId
+                int hangoutId = 0;
+
+                // The HangoutRequest should be included in the returned DTO
+                if (acceptedRequest.HangoutRequest != null)
+                {
+                    hangoutId = acceptedRequest.HangoutRequest.HangoutId;
+                }
+
+                // Then perform cleanup based on newWindow parameter
+                await _hangoutService.HangoutAcceptCleanup(hangoutId, userId, newWindow);
+
+                return Ok(acceptedRequest);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPost("request/recipient/{id}/reject")]
+        public async Task<ActionResult> RejectHangoutRequest(int id)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                await _hangoutService.HangoutRejectAsync(id, userId);
+                return Ok(new { message = "Hangout request rejected successfully" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpDelete("{hangoutId}/leave")]
+        public async Task<ActionResult> LeaveHangout(int hangoutId)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                await _hangoutService.LeaveHangoutAsync(hangoutId, userId);
+                return Ok(new { message = "Successfully left the hangout" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPut("{hangoutId}")]
+        public async Task<ActionResult<HangoutDto>> UpdateHangout(
+            int hangoutId,
+            [FromBody] HangoutDto hangoutDto
+        )
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var updatedHangout = await _hangoutService.UpdateHangoutAsync(
+                    hangoutId,
+                    hangoutDto,
+                    userId
+                );
+                return Ok(updatedHangout);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
     }
 }

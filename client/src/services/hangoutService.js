@@ -177,3 +177,129 @@ export const respondToHangoutRequest = async (requestId, response) => {
     throw error;
   }
 };
+
+/**
+ * Accept a hangout request
+ * @param {number} recipientId - ID of the HangoutRequestRecipient to accept
+ * @param {boolean} createNewWindow - Whether to create a new window for this hangout
+ * @returns {Promise<Object>} - Promise resolving to the accepted request
+ */
+export const acceptHangoutRequest = async (
+  recipientId,
+  createNewWindow = false
+) => {
+  const url = `${apiUrl}/request/recipient/${recipientId}/accept?newWindow=${createNewWindow}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to accept hangout request: ${response.status} - ${errorText}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error accepting hangout request:", error);
+    throw error;
+  }
+};
+
+/**
+ * Reject a hangout request
+ * @param {number} recipientId - ID of the HangoutRequestRecipient to reject
+ * @returns {Promise<Object>} - Promise resolving to success message
+ */
+export const rejectHangoutRequest = async (recipientId) => {
+  const url = `${apiUrl}/request/recipient/${recipientId}/reject`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to reject hangout request: ${response.status} - ${errorText}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error rejecting hangout request:", error);
+    throw error;
+  }
+};
+
+/**
+ * Leave a hangout
+ * @param {number} hangoutId - ID of the hangout to leave
+ * @returns {Promise<Object>} - Promise resolving to success message
+ */
+export const leaveHangout = async (hangoutId) => {
+  const url = `${apiUrl}/${hangoutId}/leave`;
+
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to leave hangout: ${response.status} - ${errorText}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error leaving hangout:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update a hangout
+ * @param {number} hangoutId - ID of the hangout to update
+ * @param {Object} hangoutData - The updated hangout data
+ * @returns {Promise<Object>} - Promise resolving to the updated hangout
+ */
+export const updateHangout = async (hangoutId, hangoutData) => {
+  const url = `${apiUrl}/${hangoutId}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(hangoutData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to update hangout: ${response.status} - ${errorText}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error updating hangout:", error);
+    throw error;
+  }
+};
