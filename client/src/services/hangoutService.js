@@ -79,6 +79,35 @@ export const getPendingHangoutRequests = async () => {
 };
 
 /**
+ * Fetch sent pending hangout requests to a specific friend
+ * @param {string} friendId - The friend's ID
+ * @returns {Promise<Array>} - Promise resolving to an array of sent pending hangout request objects
+ */
+export const getSentPendingHangoutRequests = async (friendId) => {
+  const url = `${apiUrl}/pending-requests-sent-to/${friendId}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch sent pending hangout requests: ${response.status}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching sent pending hangout requests:", error);
+    throw error;
+  }
+};
+
+/**
  * Create a new hangout request with multiple recipients
  * @param {Object} requestData - The hangout request data with recipient user IDs
  * @param {string} [requestData.senderId] - ID of the user sending the request (optional, defaults to current user)

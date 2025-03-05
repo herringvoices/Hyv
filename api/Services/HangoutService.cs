@@ -16,6 +16,7 @@ namespace Hyv.Services
     {
         Task<HangoutRequestDto> CreateHangoutRequestAsync(HangoutRequestCreateDto createDto);
         Task<List<HangoutRequestRecipientDto>> GetPendingHangoutRequestRecipientsAsync();
+        Task<List<HangoutRequestRecipientDto>> GetPendingHangoutRequestsForUserAsync(string userId);
         // Add other existing methods here
     }
 
@@ -118,6 +119,42 @@ namespace Hyv.Services
             var pendingRequests = await _context
                 .HangoutRequestRecipients.Where(rr =>
                     rr.UserId == currentUserId && rr.RecipientStatus == Status.Pending
+                )
+                // Include the HangoutRequest with Sender info
+                .Include(rr => rr.HangoutRequest)
+                .ThenInclude(hr => hr.Sender)
+                // Include the User info of the recipient
+                .Include(rr => rr.User)
+                // Include all other recipients of the same HangoutRequest
+                .Include(rr => rr.HangoutRequest.RequestRecipients)
+                .ThenInclude(rr => rr.User)
+                .ToListAsync();
+
+            return _mapper.Map<List<HangoutRequestRecipientDto>>(pendingRequests);
+        }
+
+        public async Task<List<HangoutRequestRecipientDto>> GetPendingHangoutRequestsForUserAsync(
+            string userId
+        )
+        {
+            var currentUserId = _httpContextAccessor
+                .HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)
+                ?.Value;
+
+            if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(userId))
+            {
+                return new List<HangoutRequestRecipientDto>();
+            }
+
+            // Get all pending requests where:
+            // - The specified user is the recipient
+            // - The current user is the sender
+            // - The status is pending
+            var pendingRequests = await _context
+                .HangoutRequestRecipients.Where(rr =>
+                    rr.UserId == userId
+                    && rr.RecipientStatus == Status.Pending
+                    && rr.HangoutRequest.SenderId == currentUserId
                 )
                 // Include the HangoutRequest with Sender info
                 .Include(rr => rr.HangoutRequest)

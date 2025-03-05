@@ -72,5 +72,25 @@ namespace Hyv.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
+
+        [HttpGet("pending-requests-sent-to/{userId}")]
+        public async Task<
+            ActionResult<List<HangoutRequestRecipientDto>>
+        > GetPendingHangoutRequestsForUser(string userId)
+        {
+            try
+            {
+                var pendingRequests = await _hangoutService.GetPendingHangoutRequestsForUserAsync(
+                    userId
+                );
+                return Ok(pendingRequests);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetPendingHangoutRequestsForUser: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return StatusCode(500, "Internal server error");
+            }
+        }
     }
 }

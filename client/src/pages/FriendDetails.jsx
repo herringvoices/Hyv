@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { getUserById } from "../services/userServices";
+import { getSentPendingHangoutRequests } from "../services/hangoutService";
 import Spinner from "../components/misc/Spinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Accordion } from "radix-ui";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import MainFriendDetails from "../components/friendsComponents/FriendsDetails/MainFriendDetails";
+import SentPendingHangoutRequestItem from "../components/friendsComponents/SentPendingHangoutRequestItem";
 
 function FriendDetails() {
   const { friendId } = useParams();
@@ -13,6 +15,9 @@ function FriendDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openItem, setOpenItem] = useState(null);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [requestError, setRequestError] = useState(null);
 
   useEffect(() => {
     const fetchFriendDetails = async () => {
@@ -34,6 +39,27 @@ function FriendDetails() {
     }
   }, [friendId]);
 
+  // Fetch pending hangout requests when accordion opens
+  useEffect(() => {
+    const fetchPendingRequests = async () => {
+      if (openItem === "pending-requests" && friendId) {
+        try {
+          setLoadingRequests(true);
+          setRequestError(null);
+          const requests = await getSentPendingHangoutRequests(friendId);
+          setPendingRequests(requests);
+        } catch (err) {
+          console.error("Error fetching pending hangout requests:", err);
+          setRequestError("Failed to load pending hangout requests");
+        } finally {
+          setLoadingRequests(false);
+        }
+      }
+    };
+
+    fetchPendingRequests();
+  }, [openItem, friendId]);
+
   const handleAccordionValueChange = (value) => {
     setOpenItem(value);
   };
@@ -42,6 +68,36 @@ function FriendDetails() {
   const chevronVariants = {
     open: { rotate: 180 },
     closed: { rotate: 0 },
+  };
+
+  // Enhanced animation variants for smoother collapsing
+  const contentVariants = {
+    hidden: {
+      opacity: 0,
+      height: 0,
+      marginTop: 0,
+      marginBottom: 0,
+      paddingTop: 0,
+      paddingBottom: 0,
+      transition: {
+        height: { duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] },
+        opacity: { duration: 0.25 },
+        padding: { duration: 0.3 },
+      },
+    },
+    visible: {
+      opacity: 1,
+      height: "auto",
+      marginTop: "8px",
+      marginBottom: "8px",
+      paddingTop: "8px",
+      paddingBottom: "8px",
+      transition: {
+        height: { duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] },
+        opacity: { duration: 0.25, delay: 0.05 },
+        padding: { duration: 0.3 },
+      },
+    },
   };
 
   if (loading) {
@@ -73,7 +129,7 @@ function FriendDetails() {
       {/* Main Content */}
       <MainFriendDetails friend={friend} />
 
-      {/* Hangouts Content (To be implemented later) */}
+      {/* Hangouts Content */}
       <div className="w-full md:w-2/3 text-center h-auto md:h-screen py-4 md:py-0">
         <Accordion.Root
           className="w-11/12 md:w-4/5 mx-auto"
@@ -100,9 +156,41 @@ function FriendDetails() {
                 />
               </motion.div>
             </Accordion.Trigger>
-            <Accordion.Content className="px-2 py-2">
-              <p>This feature has yet to be implemented</p>
-            </Accordion.Content>
+            <AnimatePresence initial={false}>
+              {openItem === "pending-requests" && (
+                <motion.div
+                  key="pending-content"
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  variants={contentVariants}
+                  className="overflow-hidden"
+                >
+                  <div className="px-2">
+                    {loadingRequests ? (
+                      <div className="flex justify-center items-center py-4">
+                        <Spinner size="sm" />
+                      </div>
+                    ) : requestError ? (
+                      <div className="text-red-400 py-2">{requestError}</div>
+                    ) : pendingRequests.length === 0 ? (
+                      <p className="text-light py-2">
+                        No pending hangout requests found.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {pendingRequests.map((request) => (
+                          <SentPendingHangoutRequestItem
+                            key={request.id}
+                            request={request}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Accordion.Item>
 
           <Accordion.Item
@@ -124,9 +212,22 @@ function FriendDetails() {
                 />
               </motion.div>
             </Accordion.Trigger>
-            <Accordion.Content className="px-2 py-2">
-              <p>This feature has yet to be implemented</p>
-            </Accordion.Content>
+            <AnimatePresence initial={false}>
+              {openItem === "upcoming-hangouts" && (
+                <motion.div
+                  key="upcoming-content"
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  variants={contentVariants}
+                  className="overflow-hidden"
+                >
+                  <div className="px-2">
+                    <p>This feature has yet to be implemented</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Accordion.Item>
 
           <Accordion.Item
@@ -148,9 +249,22 @@ function FriendDetails() {
                 />
               </motion.div>
             </Accordion.Trigger>
-            <Accordion.Content className="px-2 py-2">
-              <p>This feature has yet to be implemented</p>
-            </Accordion.Content>
+            <AnimatePresence initial={false}>
+              {openItem === "past-hangouts" && (
+                <motion.div
+                  key="past-content"
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  variants={contentVariants}
+                  className="overflow-hidden"
+                >
+                  <div className="px-2">
+                    <p>This feature has yet to be implemented</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Accordion.Item>
         </Accordion.Root>
       </div>
