@@ -7,6 +7,7 @@ import Profile from "./pages/Profile";
 import Welcome from "./pages/Welcome";
 import Windows from "./pages/Windows";
 import Hive from "./pages/Hive";
+import Hangouts from "./pages/Hangouts";
 
 function ApplicationViews() {
   return (
@@ -29,7 +30,7 @@ function ApplicationViews() {
           <Route index element={<Friends />} />
           <Route path=":friendId" element={<FriendDetails />} />
         </Route>
-        <Route path="hangouts" element={<div>Hangouts Placeholder</div>} />
+        <Route path="hangouts" element={<Hangouts />} />
         <Route path="profile" element={<Profile />} />
       </Route>
       <Route path="/logout" element={<Logout />} />

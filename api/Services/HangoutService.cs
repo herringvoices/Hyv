@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using AutoMapper;
 using Hyv.Data;
 using Hyv.DTOs;
 using Hyv.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hyv.Services
@@ -13,6 +15,8 @@ namespace Hyv.Services
     public interface IHangoutService
     {
         Task<HangoutRequestDto> CreateHangoutRequestAsync(HangoutRequestCreateDto createDto);
+        Task<List<HangoutRequestRecipientDto>> GetPendingHangoutRequestRecipientsAsync();
+        Task<List<HangoutRequestRecipientDto>> GetPendingHangoutRequestsForUserAsync(string userId);
         // Add other existing methods here
     }
 
@@ -20,11 +24,17 @@ namespace Hyv.Services
     {
         private readonly HyvDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public HangoutService(HyvDbContext context, IMapper mapper)
+        public HangoutService(
+            HyvDbContext context,
+            IMapper mapper,
+            IHttpContextAccessor httpContextAccessor
+        )
         {
             _context = context;
             _mapper = mapper;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<HangoutRequestDto> CreateHangoutRequestAsync(
@@ -90,6 +100,73 @@ namespace Hyv.Services
 
             // Map to DTO and return
             return _mapper.Map<HangoutRequestDto>(completeHangoutRequest);
+        }
+
+        public async Task<
+            List<HangoutRequestRecipientDto>
+        > GetPendingHangoutRequestRecipientsAsync()
+        {
+            var currentUserId = _httpContextAccessor
+                .HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)
+                ?.Value;
+
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                return new List<HangoutRequestRecipientDto>();
+            }
+
+            // Get all pending requests where the current user is a recipient
+            var pendingRequests = await _context
+                .HangoutRequestRecipients.Where(rr =>
+                    rr.UserId == currentUserId && rr.RecipientStatus == Status.Pending
+                )
+                // Include the HangoutRequest with Sender info
+                .Include(rr => rr.HangoutRequest)
+                .ThenInclude(hr => hr.Sender)
+                // Include the User info of the recipient
+                .Include(rr => rr.User)
+                // Include all other recipients of the same HangoutRequest
+                .Include(rr => rr.HangoutRequest.RequestRecipients)
+                .ThenInclude(rr => rr.User)
+                .ToListAsync();
+
+            return _mapper.Map<List<HangoutRequestRecipientDto>>(pendingRequests);
+        }
+
+        public async Task<List<HangoutRequestRecipientDto>> GetPendingHangoutRequestsForUserAsync(
+            string userId
+        )
+        {
+            var currentUserId = _httpContextAccessor
+                .HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)
+                ?.Value;
+
+            if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(userId))
+            {
+                return new List<HangoutRequestRecipientDto>();
+            }
+
+            // Get all pending requests where:
+            // - The specified user is the recipient
+            // - The current user is the sender
+            // - The status is pending
+            var pendingRequests = await _context
+                .HangoutRequestRecipients.Where(rr =>
+                    rr.UserId == userId
+                    && rr.RecipientStatus == Status.Pending
+                    && rr.HangoutRequest.SenderId == currentUserId
+                )
+                // Include the HangoutRequest with Sender info
+                .Include(rr => rr.HangoutRequest)
+                .ThenInclude(hr => hr.Sender)
+                // Include the User info of the recipient
+                .Include(rr => rr.User)
+                // Include all other recipients of the same HangoutRequest
+                .Include(rr => rr.HangoutRequest.RequestRecipients)
+                .ThenInclude(rr => rr.User)
+                .ToListAsync();
+
+            return _mapper.Map<List<HangoutRequestRecipientDto>>(pendingRequests);
         }
 
         // Add other existing methods here
