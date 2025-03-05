@@ -70,33 +70,39 @@ function FriendDetails() {
     closed: { rotate: 0 },
   };
 
-  // Enhanced animation variants for smoother collapsing
+  // Improved animation variants to eliminate the hitch
   const contentVariants = {
     hidden: {
       opacity: 0,
       height: 0,
-      marginTop: 0,
-      marginBottom: 0,
-      paddingTop: 0,
-      paddingBottom: 0,
+      overflow: "hidden",
       transition: {
-        height: { duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] },
-        opacity: { duration: 0.25 },
-        padding: { duration: 0.3 },
+        duration: 0.2,
+        ease: "easeInOut",
+        // Using a single unified transition for all properties
+        when: "afterChildren", // Important: animate parent after children are hidden
       },
     },
     visible: {
       opacity: 1,
       height: "auto",
-      marginTop: "8px",
-      marginBottom: "8px",
-      paddingTop: "8px",
-      paddingBottom: "8px",
+      overflow: "hidden",
       transition: {
-        height: { duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] },
-        opacity: { duration: 0.25, delay: 0.05 },
-        padding: { duration: 0.3 },
+        duration: 0.3,
+        ease: "easeOut", // More consistent easing
+        when: "beforeChildren", // Important: animate parent before showing children
+        staggerChildren: 0.05, // Stagger children animations slightly
       },
+    },
+  };
+
+  // Animation for the content inside
+  const contentChildrenVariants = {
+    hidden: { opacity: 0, y: -10 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.2 },
     },
   };
 
@@ -166,15 +172,18 @@ function FriendDetails() {
                   variants={contentVariants}
                   className="overflow-hidden"
                 >
-                  <div className="px-2">
+                  <motion.div
+                    className="px-2 py-4"
+                    variants={contentChildrenVariants}
+                  >
                     {loadingRequests ? (
-                      <div className="flex justify-center items-center py-4">
+                      <div className="flex justify-center items-center">
                         <Spinner size="sm" />
                       </div>
                     ) : requestError ? (
-                      <div className="text-red-400 py-2">{requestError}</div>
+                      <div className="text-red-400">{requestError}</div>
                     ) : pendingRequests.length === 0 ? (
-                      <p className="text-light py-2">
+                      <p className="text-light">
                         No pending hangout requests found.
                       </p>
                     ) : (
@@ -187,7 +196,7 @@ function FriendDetails() {
                         ))}
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -222,9 +231,12 @@ function FriendDetails() {
                   variants={contentVariants}
                   className="overflow-hidden"
                 >
-                  <div className="px-2">
+                  <motion.div
+                    className="px-2 py-4"
+                    variants={contentChildrenVariants}
+                  >
                     <p>This feature has yet to be implemented</p>
-                  </div>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -259,9 +271,12 @@ function FriendDetails() {
                   variants={contentVariants}
                   className="overflow-hidden"
                 >
-                  <div className="px-2">
+                  <motion.div
+                    className="px-2 py-4"
+                    variants={contentChildrenVariants}
+                  >
                     <p>This feature has yet to be implemented</p>
-                  </div>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
