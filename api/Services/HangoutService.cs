@@ -28,6 +28,30 @@ namespace Hyv.Services
 
         // Add new update method
         Task<HangoutDto> UpdateHangoutAsync(int hangoutId, HangoutDto hangoutDto, string userId);
+
+        // Add this new method
+        Task<IEnumerable<HangoutDto>> GetHangoutsByDateRangeAsync(
+            DateTime start,
+            DateTime end,
+            string userId
+        );
+
+        // Add new delete method
+        Task<bool> DeleteHangoutAsync(int hangoutId, string userId);
+
+        // Get past hangouts for a specific user
+        Task<IEnumerable<HangoutDto>> GetPastHangoutsForUserAsync(string userId);
+
+        // Get upcoming hangouts for a specific user
+        Task<IEnumerable<HangoutDto>> GetUpcomingHangoutsForUserAsync(string userId);
+
+        // Get shared hangouts between logged in user and target user
+        Task<IEnumerable<HangoutDto>> GetSharedHangoutsWithUserAsync(
+            string targetUserId,
+            string currentUserId,
+            bool pastOnly = false,
+            bool upcomingOnly = false
+        );
     }
 
     public class HangoutService : IHangoutService
@@ -82,6 +106,15 @@ namespace Hyv.Services
 
             // Save to get the generated ID
             await _context.SaveChangesAsync();
+
+            // Add sender as a HangoutGuest
+            var senderGuest = new HangoutGuest
+            {
+                HangoutId = hangout.Id,
+                UserId = createDto.SenderId,
+                JoinedAt = DateTime.UtcNow,
+            };
+            await _context.HangoutGuests.AddAsync(senderGuest);
 
             // Create a recipient entry for each user ID
             if (createDto.RecipientUserIds?.Any() == true)
@@ -211,7 +244,7 @@ namespace Hyv.Services
                 // Find recipient and verify it belongs to the user
                 var recipient = await _context
                     .HangoutRequestRecipients.Include(r => r.HangoutRequest)
-                    .ThenInclude(hr => hr.Hangout) // Make sure to include the Hangout
+                    .ThenInclude(hr => hr.Hangout)
                     .Include(r => r.User)
                     .FirstOrDefaultAsync(r =>
                         r.Id == hangoutRequestRecipientId && r.UserId == userId
@@ -232,15 +265,23 @@ namespace Hyv.Services
 
                 if (hangout != null)
                 {
-                    // Add user as a HangoutGuest
-                    var hangoutGuest = new HangoutGuest
-                    {
-                        HangoutId = hangout.Id, // This is the correct Hangout.Id
-                        UserId = userId,
-                        JoinedAt = DateTime.UtcNow,
-                    };
+                    // Check if the user is already a guest to prevent duplicates
+                    bool isAlreadyGuest = await _context.HangoutGuests.AnyAsync(hg =>
+                        hg.HangoutId == hangout.Id && hg.UserId == userId
+                    );
 
-                    await _context.HangoutGuests.AddAsync(hangoutGuest);
+                    if (!isAlreadyGuest)
+                    {
+                        // Add user as a HangoutGuest
+                        var hangoutGuest = new HangoutGuest
+                        {
+                            HangoutId = hangout.Id,
+                            UserId = userId,
+                            JoinedAt = DateTime.UtcNow,
+                        };
+
+                        await _context.HangoutGuests.AddAsync(hangoutGuest);
+                    }
 
                     // Update hangout active status
                     hangout.Active = true;
@@ -268,9 +309,11 @@ namespace Hyv.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Get the hangout with its request info to identify the sender
+                // Get the hangout with all its guests
                 var hangout = await _context
                     .Hangouts.Include(h => h.HangoutRequests)
+                    .Include(h => h.HangoutGuests)
+                    .ThenInclude(hg => hg.User)
                     .FirstOrDefaultAsync(h => h.Id == hangoutId);
 
                 if (hangout == null)
@@ -278,21 +321,16 @@ namespace Hyv.Services
                     throw new KeyNotFoundException($"Hangout with ID {hangoutId} not found");
                 }
 
-                // Get the sender ID from the HangoutRequest
-                string senderId = null;
-                var hangoutRequest = hangout.HangoutRequests.FirstOrDefault();
-                if (hangoutRequest != null)
-                {
-                    senderId = hangoutRequest.SenderId;
-                }
+                // Get all hangout guests' user IDs
+                var guestUserIds = hangout.HangoutGuests.Select(hg => hg.UserId).ToList();
 
-                // Process user's conflicting windows
+                // Process accepting user's conflicting windows
                 await HandleConflictingWindows(hangout, userId);
 
-                // Process sender's conflicting windows (if sender is not the current user)
-                if (senderId != null && senderId != userId)
+                // Process all guests' conflicting windows
+                foreach (var guestId in guestUserIds.Where(id => id != userId))
                 {
-                    await HandleConflictingWindows(hangout, senderId);
+                    await HandleConflictingWindows(hangout, guestId);
                 }
 
                 // Create new window if requested
@@ -307,24 +345,26 @@ namespace Hyv.Services
 
                     if (existingWindow != null)
                     {
-                        // Add current user as participant if not already
-                        if (!existingWindow.WindowParticipants.Any(wp => wp.UserId == userId))
+                        // Synchronize window participants with hangout guests
+                        // First, remove any participants who are not hangout guests
+                        var participantsToRemove = existingWindow
+                            .WindowParticipants.Where(wp => !guestUserIds.Contains(wp.UserId))
+                            .ToList();
+
+                        foreach (var participant in participantsToRemove)
                         {
-                            existingWindow.WindowParticipants.Add(
-                                new WindowParticipant { UserId = userId }
-                            );
+                            _context.WindowParticipants.Remove(participant);
                         }
 
-                        // Add sender as participant if not already (and if sender is not the current user)
-                        if (
-                            senderId != null
-                            && senderId != userId
-                            && !existingWindow.WindowParticipants.Any(wp => wp.UserId == senderId)
-                        )
+                        // Then add any guests who are not window participants
+                        foreach (var guestId in guestUserIds)
                         {
-                            existingWindow.WindowParticipants.Add(
-                                new WindowParticipant { UserId = senderId }
-                            );
+                            if (!existingWindow.WindowParticipants.Any(wp => wp.UserId == guestId))
+                            {
+                                existingWindow.WindowParticipants.Add(
+                                    new WindowParticipant { UserId = guestId }
+                                );
+                            }
                         }
 
                         await _context.SaveChangesAsync();
@@ -352,17 +392,14 @@ namespace Hyv.Services
                             HangoutId = hangoutId,
                             PreferredActivity = hangout.Description,
                             DaysOfNoticeNeeded = 0,
-                            WindowParticipants = new List<WindowParticipant>
-                            {
-                                new WindowParticipant { UserId = userId },
-                            },
+                            WindowParticipants = new List<WindowParticipant>(),
                         };
 
-                        // Add sender as participant (if sender is not the current user)
-                        if (senderId != null && senderId != userId)
+                        // Add all hangout guests as window participants
+                        foreach (var guestId in guestUserIds)
                         {
                             newWindow.WindowParticipants.Add(
-                                new WindowParticipant { UserId = senderId }
+                                new WindowParticipant { UserId = guestId }
                             );
                         }
 
@@ -395,48 +432,72 @@ namespace Hyv.Services
 
         public async Task<bool> LeaveHangoutAsync(int hangoutId, string userId)
         {
-            // Find the hangout guest entry for this user
-            var hangoutGuest = await _context.HangoutGuests.FirstOrDefaultAsync(hg =>
-                hg.HangoutId == hangoutId && hg.UserId == userId
-            );
-
-            if (hangoutGuest == null)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                throw new KeyNotFoundException(
-                    $"User is not a guest of hangout with ID {hangoutId}"
-                );
-            }
-
-            // Remove the hangout guest entry
-            _context.HangoutGuests.Remove(hangoutGuest);
-
-            // Also check if there's a window participant entry for this hangout
-            var hangoutWindow = await _context
-                .Windows.Include(w => w.WindowParticipants)
-                .FirstOrDefaultAsync(w => w.HangoutId == hangoutId);
-
-            if (hangoutWindow != null)
-            {
-                // Find the participant entry for this user
-                var participantEntry = hangoutWindow.WindowParticipants.FirstOrDefault(wp =>
-                    wp.UserId == userId
+                // Find the hangout guest entry for this user
+                var hangoutGuest = await _context.HangoutGuests.FirstOrDefaultAsync(hg =>
+                    hg.HangoutId == hangoutId && hg.UserId == userId
                 );
 
-                if (participantEntry != null)
+                if (hangoutGuest == null)
                 {
-                    // Remove the participant from the window
-                    _context.WindowParticipants.Remove(participantEntry);
+                    throw new KeyNotFoundException(
+                        $"User is not a guest of hangout with ID {hangoutId}"
+                    );
+                }
 
-                    // If there are no participants left, consider removing the window entirely
-                    if (hangoutWindow.WindowParticipants.Count <= 1)
+                // Remove the hangout guest entry
+                _context.HangoutGuests.Remove(hangoutGuest);
+
+                // Check if there are any remaining guests
+                var remainingGuestsCount = await _context
+                    .HangoutGuests.Where(hg => hg.HangoutId == hangoutId && hg.UserId != userId)
+                    .CountAsync();
+
+                // Also check if there's a window participant entry for this hangout
+                var hangoutWindow = await _context
+                    .Windows.Include(w => w.WindowParticipants)
+                    .FirstOrDefaultAsync(w => w.HangoutId == hangoutId);
+
+                if (hangoutWindow != null)
+                {
+                    // Remove this user from window participants
+                    var participantEntry = hangoutWindow.WindowParticipants.FirstOrDefault(wp =>
+                        wp.UserId == userId
+                    );
+
+                    if (participantEntry != null)
+                    {
+                        _context.WindowParticipants.Remove(participantEntry);
+                    }
+
+                    // If there are no guests left, or only one guest remaining, remove the window entirely
+                    if (remainingGuestsCount <= 1)
                     {
                         _context.Windows.Remove(hangoutWindow);
                     }
                 }
-            }
 
-            await _context.SaveChangesAsync();
-            return true;
+                // If this was the last guest, mark the hangout as inactive
+                if (remainingGuestsCount == 0)
+                {
+                    var hangout = await _context.Hangouts.FindAsync(hangoutId);
+                    if (hangout != null)
+                    {
+                        hangout.Active = false;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         // Helper method to handle conflicting windows for a user
@@ -525,6 +586,9 @@ namespace Hyv.Services
                     window.UpdatedAt = DateTime.UtcNow;
                 }
 
+                // Synchronize window participants with hangout guests
+                await SynchronizeWindowParticipantsWithHangoutGuests(hangoutId);
+
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -536,6 +600,229 @@ namespace Hyv.Services
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        public async Task<IEnumerable<HangoutDto>> GetHangoutsByDateRangeAsync(
+            DateTime start,
+            DateTime end,
+            string userId
+        )
+        {
+            // Find all hangouts in the date range where the user is a guest
+            var hangouts = await _context
+                .Hangouts.Where(h =>
+                    h.ConfirmedStart >= start
+                    && h.ConfirmedEnd <= end
+                    && h.Active
+                    && h.HangoutGuests.Any(hg => hg.UserId == userId)
+                )
+                .Include(h => h.HangoutGuests)
+                .ThenInclude(hg => hg.User)
+                .ToListAsync();
+
+            // Map to DTOs
+            return _mapper.Map<IEnumerable<HangoutDto>>(hangouts);
+        }
+
+        // Add this new helper method
+        public async Task SynchronizeWindowParticipantsWithHangoutGuests(int hangoutId)
+        {
+            // Get all hangout guests
+            var hangoutGuests = await _context
+                .HangoutGuests.Where(hg => hg.HangoutId == hangoutId)
+                .ToListAsync();
+
+            var guestUserIds = hangoutGuests.Select(hg => hg.UserId).ToList();
+
+            // Find the associated window
+            var window = await _context
+                .Windows.Include(w => w.WindowParticipants)
+                .FirstOrDefaultAsync(w => w.HangoutId == hangoutId);
+
+            if (window != null)
+            {
+                // Remove window participants who are not hangout guests
+                var participantsToRemove = window
+                    .WindowParticipants.Where(wp => !guestUserIds.Contains(wp.UserId))
+                    .ToList();
+
+                foreach (var participant in participantsToRemove)
+                {
+                    _context.WindowParticipants.Remove(participant);
+                }
+
+                // Add hangout guests who are not already window participants
+                foreach (var guestId in guestUserIds)
+                {
+                    if (!window.WindowParticipants.Any(wp => wp.UserId == guestId))
+                    {
+                        window.WindowParticipants.Add(
+                            new WindowParticipant { WindowId = window.Id, UserId = guestId }
+                        );
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<bool> DeleteHangoutAsync(int hangoutId, string userId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Find the hangout with all related entities
+                var hangout = await _context
+                    .Hangouts.Include(h => h.HangoutGuests)
+                    .Include(h => h.HangoutRequests)
+                    .ThenInclude(hr => hr.RequestRecipients)
+                    .FirstOrDefaultAsync(h => h.Id == hangoutId);
+
+                if (hangout == null)
+                {
+                    throw new KeyNotFoundException($"Hangout with ID {hangoutId} not found");
+                }
+
+                // Check if the current user is a guest of the hangout
+                var isGuest = hangout.HangoutGuests.Any(hg => hg.UserId == userId);
+
+                if (!isGuest)
+                {
+                    throw new UnauthorizedAccessException(
+                        "You are not authorized to delete this hangout"
+                    );
+                }
+
+                // Find any windows associated with this hangout
+                var associatedWindows = await _context
+                    .Windows.Include(w => w.WindowParticipants)
+                    .Include(w => w.WindowVisibilities)
+                    .Where(w => w.HangoutId == hangoutId)
+                    .ToListAsync();
+
+                // Delete related Window entities
+                foreach (var window in associatedWindows)
+                {
+                    // Delete window participants
+                    if (window.WindowParticipants?.Any() == true)
+                    {
+                        _context.WindowParticipants.RemoveRange(window.WindowParticipants);
+                    }
+
+                    // Delete window visibilities
+                    if (window.WindowVisibilities?.Any() == true)
+                    {
+                        _context.WindowVisibilities.RemoveRange(window.WindowVisibilities);
+                    }
+
+                    // Delete the window
+                    _context.Windows.Remove(window);
+                }
+
+                // Delete all hangout request recipients
+                foreach (var request in hangout.HangoutRequests)
+                {
+                    if (request.RequestRecipients?.Any() == true)
+                    {
+                        _context.HangoutRequestRecipients.RemoveRange(request.RequestRecipients);
+                    }
+                }
+
+                // Delete all hangout requests
+                if (hangout.HangoutRequests?.Any() == true)
+                {
+                    _context.HangoutRequests.RemoveRange(hangout.HangoutRequests);
+                }
+
+                // Delete all hangout guests
+                if (hangout.HangoutGuests?.Any() == true)
+                {
+                    _context.HangoutGuests.RemoveRange(hangout.HangoutGuests);
+                }
+
+                // Finally, delete the hangout
+                _context.Hangouts.Remove(hangout);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return true;
+            }
+            catch (Exception ex)
+                when (ex is not KeyNotFoundException && ex is not UnauthorizedAccessException)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception($"Failed to delete hangout: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<IEnumerable<HangoutDto>> GetPastHangoutsForUserAsync(string userId)
+        {
+            var now = DateTime.UtcNow;
+
+            var hangouts = await _context
+                .Hangouts.Where(h =>
+                    h.ConfirmedEnd < now && h.HangoutGuests.Any(hg => hg.UserId == userId)
+                )
+                .Include(h => h.HangoutGuests)
+                .ThenInclude(hg => hg.User)
+                .OrderByDescending(h => h.ConfirmedEnd)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<HangoutDto>>(hangouts);
+        }
+
+        public async Task<IEnumerable<HangoutDto>> GetUpcomingHangoutsForUserAsync(string userId)
+        {
+            var now = DateTime.UtcNow;
+
+            var hangouts = await _context
+                .Hangouts.Where(h =>
+                    h.ConfirmedStart > now
+                    && h.Active
+                    && h.HangoutGuests.Any(hg => hg.UserId == userId)
+                )
+                .Include(h => h.HangoutGuests)
+                .ThenInclude(hg => hg.User)
+                .OrderBy(h => h.ConfirmedStart)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<HangoutDto>>(hangouts);
+        }
+
+        public async Task<IEnumerable<HangoutDto>> GetSharedHangoutsWithUserAsync(
+            string targetUserId,
+            string currentUserId,
+            bool pastOnly = false,
+            bool upcomingOnly = false
+        )
+        {
+            var now = DateTime.UtcNow;
+
+            // Start with base query for hangouts where both users are guests
+            var query = _context.Hangouts.Where(h =>
+                h.HangoutGuests.Any(hg => hg.UserId == targetUserId)
+                && h.HangoutGuests.Any(hg => hg.UserId == currentUserId)
+            );
+
+            // Apply time filter if specified
+            if (pastOnly)
+            {
+                query = query.Where(h => h.ConfirmedEnd < now);
+            }
+            else if (upcomingOnly)
+            {
+                query = query.Where(h => h.ConfirmedStart > now && h.Active);
+            }
+
+            // Include related data and execute query
+            var hangouts = await query
+                .Include(h => h.HangoutGuests)
+                .ThenInclude(hg => hg.User)
+                .OrderByDescending(h => pastOnly ? h.ConfirmedEnd : h.ConfirmedStart)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<HangoutDto>>(hangouts);
         }
     }
 }

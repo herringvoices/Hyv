@@ -168,7 +168,9 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.Start, opt => opt.MapFrom(src => src.ConfirmedStart))
             .ForMember(dest => dest.End, opt => opt.MapFrom(src => src.ConfirmedEnd))
-            .ForMember(dest => dest.AllDay, opt => opt.MapFrom(src => false)) // Default to false, adjust if needed
+            .ForMember(dest => dest.AllDay, opt => opt.MapFrom(src => false)) // Default to false
+            .ForMember(dest => dest.BackgroundColor, opt => opt.UseDestinationValue()) // Use default value from DTO
+            .ForMember(dest => dest.TextColor, opt => opt.UseDestinationValue()) // Use default value from DTO
             .ForMember(
                 dest => dest.ExtendedProps,
                 opt =>

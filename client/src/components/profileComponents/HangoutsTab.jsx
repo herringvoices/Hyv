@@ -2,14 +2,26 @@ import React, { useState, useEffect } from "react";
 import { Accordion } from "radix-ui";
 import { motion } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { getPendingHangoutRequests } from "../../services/hangoutService";
+import {
+  getPendingHangoutRequests,
+  getUpcomingHangouts,
+  getPastHangouts,
+} from "../../services/hangoutService";
 import PendingHangoutItem from "../hangoutComponents/PendingHangoutItem";
+import SharedUpcomingHangoutItem from "../friendsComponents/SharedUpcomingHangoutItem";
+import SharedPastHangoutItem from "../friendsComponents/SharedPastHangoutItem";
 import Spinner from "../misc/Spinner";
 
 function HangoutsTab() {
   const [openItem, setOpenItem] = useState(null);
   const [pendingHangouts, setPendingHangouts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [upcomingHangouts, setUpcomingHangouts] = useState([]);
+  const [pastHangouts, setPastHangouts] = useState([]);
+  const [isLoadingPending, setIsLoadingPending] = useState(true);
+  const [isLoadingUpcoming, setIsLoadingUpcoming] = useState(false);
+  const [isLoadingPast, setIsLoadingPast] = useState(false);
+  const [upcomingError, setUpcomingError] = useState(null);
+  const [pastError, setPastError] = useState(null);
 
   // Chevron animation variants
   const chevronVariants = {
@@ -19,22 +31,69 @@ function HangoutsTab() {
 
   const fetchPendingHangouts = async () => {
     try {
-      setIsLoading(true);
+      setIsLoadingPending(true);
       const data = await getPendingHangoutRequests();
       setPendingHangouts(data);
     } catch (error) {
       console.error("Error fetching pending hangouts:", error);
     } finally {
-      setIsLoading(false);
+      setIsLoadingPending(false);
     }
   };
 
+  const fetchUpcomingHangouts = async () => {
+    try {
+      setIsLoadingUpcoming(true);
+      setUpcomingError(null);
+      const data = await getUpcomingHangouts();
+      setUpcomingHangouts(data);
+    } catch (error) {
+      console.error("Error fetching upcoming hangouts:", error);
+      setUpcomingError("Failed to load upcoming hangouts");
+    } finally {
+      setIsLoadingUpcoming(false);
+    }
+  };
+
+  const fetchPastHangouts = async () => {
+    try {
+      setIsLoadingPast(true);
+      setPastError(null);
+      const data = await getPastHangouts();
+      setPastHangouts(data);
+    } catch (error) {
+      console.error("Error fetching past hangouts:", error);
+      setPastError("Failed to load past hangouts");
+    } finally {
+      setIsLoadingPast(false);
+    }
+  };
+
+  // Initial load of pending hangouts
   useEffect(() => {
     fetchPendingHangouts();
   }, []);
 
+  // Load data when accordion sections are opened
+  useEffect(() => {
+    if (openItem === "upcoming-hangouts") {
+      fetchUpcomingHangouts();
+    } else if (openItem === "past-hangouts") {
+      fetchPastHangouts();
+    }
+  }, [openItem]);
+
   const handleAccordionValueChange = (value) => {
     setOpenItem(value);
+  };
+
+  // Function to refresh data after an action (delete, leave, etc.)
+  const handleActionComplete = () => {
+    if (openItem === "upcoming-hangouts") {
+      fetchUpcomingHangouts();
+    } else if (openItem === "past-hangouts") {
+      fetchPastHangouts();
+    }
   };
 
   return (
@@ -74,7 +133,7 @@ function HangoutsTab() {
             </motion.div>
           </Accordion.Trigger>
           <Accordion.Content className="px-2 py-2">
-            {isLoading ? (
+            {isLoadingPending ? (
               <div className="flex justify-center p-4">
                 <Spinner />
               </div>
@@ -101,6 +160,11 @@ function HangoutsTab() {
           <Accordion.Trigger className="w-full flex items-center justify-between px-3 md:px-4">
             <h3 className="text-xl md:text-2xl my-2 md:my-3 text-primary">
               Upcoming Hangouts
+              {upcomingHangouts.length > 0 && (
+                <span className="ml-2 bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">
+                  {upcomingHangouts.length}
+                </span>
+              )}
             </h3>
             <motion.div
               animate={openItem === "upcoming-hangouts" ? "open" : "closed"}
@@ -114,9 +178,25 @@ function HangoutsTab() {
             </motion.div>
           </Accordion.Trigger>
           <Accordion.Content className="px-2 py-2">
-            <p className="text-light p-2">
-              This feature has yet to be implemented
-            </p>
+            {isLoadingUpcoming ? (
+              <div className="flex justify-center p-4">
+                <Spinner />
+              </div>
+            ) : upcomingError ? (
+              <p className="text-red-400 p-2">{upcomingError}</p>
+            ) : upcomingHangouts.length === 0 ? (
+              <p className="text-light p-2">No upcoming hangouts</p>
+            ) : (
+              <ul className="space-y-2">
+                {upcomingHangouts.map((hangout) => (
+                  <SharedUpcomingHangoutItem
+                    key={hangout.id}
+                    hangout={hangout}
+                    onActionComplete={handleActionComplete}
+                  />
+                ))}
+              </ul>
+            )}
           </Accordion.Content>
         </Accordion.Item>
 
@@ -140,9 +220,21 @@ function HangoutsTab() {
             </motion.div>
           </Accordion.Trigger>
           <Accordion.Content className="px-2 py-2">
-            <p className="text-light p-2">
-              This feature has yet to be implemented
-            </p>
+            {isLoadingPast ? (
+              <div className="flex justify-center p-4">
+                <Spinner />
+              </div>
+            ) : pastError ? (
+              <p className="text-red-400 p-2">{pastError}</p>
+            ) : pastHangouts.length === 0 ? (
+              <p className="text-light p-2">No past hangouts</p>
+            ) : (
+              <ul className="space-y-2">
+                {pastHangouts.map((hangout) => (
+                  <SharedPastHangoutItem key={hangout.id} hangout={hangout} />
+                ))}
+              </ul>
+            )}
           </Accordion.Content>
         </Accordion.Item>
       </Accordion.Root>
