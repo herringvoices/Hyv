@@ -3,6 +3,7 @@ import {
   getWindowsByDateRange,
   updateWindow,
 } from "../services/windowServices";
+import { getUserHangoutsInRange } from "../services/hangoutService";
 
 // Import the FullCalendar packages correctly
 import FullCalendar from "@fullcalendar/react";
@@ -10,11 +11,13 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
-// Import the WindowFormModal component
+// Import the modal components
 import WindowFormModal from "../components/windows/WindowFormModal";
+import HangoutFormModal from "../components/hangouts/HangoutFormModal"; // Add this import
 
 export default function Windows() {
   const [windows, setWindows] = useState([]);
+  const [hangouts, setHangouts] = useState([]); // Add this new state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentView, setCurrentView] = useState("dayGridMonth");
@@ -23,6 +26,10 @@ export default function Windows() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDateInfo, setSelectedDateInfo] = useState(null);
+
+  // Hangout modal state - add these
+  const [isHangoutModalOpen, setIsHangoutModalOpen] = useState(false);
+  const [selectedHangout, setSelectedHangout] = useState(null);
 
   // Add a ref to access the calendar API
   const calendarRef = useRef(null);
@@ -55,13 +62,21 @@ export default function Windows() {
       const startStr = dateInfo.startStr;
       const endStr = dateInfo.endStr;
 
-      console.log(`Fetching windows from ${startStr} to ${endStr}`);
+      console.log(`Fetching calendar data from ${startStr} to ${endStr}`);
 
-      const fetchedWindows = await getWindowsByDateRange(startStr, endStr);
+      // Fetch both windows and hangouts in parallel
+      const [fetchedWindows, fetchedHangouts] = await Promise.all([
+        getWindowsByDateRange(startStr, endStr),
+        getUserHangoutsInRange(new Date(startStr), new Date(endStr)),
+      ]);
+
       setWindows(fetchedWindows);
-      console.log("Windows fetched:", fetchedWindows);
+      setHangouts(fetchedHangouts);
 
-      // Optionally, also scroll to current time in timeGrid views:
+      console.log("Windows fetched:", fetchedWindows);
+      console.log("Hangouts fetched:", fetchedHangouts);
+
+      // Rest of the function remains the same
       if (
         dateInfo.view.type === "timeGridWeek" ||
         dateInfo.view.type === "timeGridDay"
@@ -70,8 +85,8 @@ export default function Windows() {
         dateInfo.view.calendar.setOption("scrollTime", currentHour + ":00:00");
       }
     } catch (err) {
-      console.error("Error fetching windows:", err);
-      setError("Failed to load windows. Please try again.");
+      console.error("Error fetching calendar data:", err);
+      setError("Failed to load calendar data. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -129,23 +144,38 @@ export default function Windows() {
       const calendarApi = calendarRef.current.getApi();
       const view = calendarApi.view;
 
-      // Re-fetch windows for the current date range
-      getWindowsByDateRange(
-        view.activeStart.toISOString(),
-        view.activeEnd.toISOString()
-      )
-        .then((fetchedWindows) => {
+      // Get date range from current view
+      const start = view.activeStart.toISOString();
+      const end = view.activeEnd.toISOString();
+
+      // Re-fetch both windows and hangouts
+      Promise.all([
+        getWindowsByDateRange(start, end),
+        getUserHangoutsInRange(new Date(start), new Date(end)),
+      ])
+        .then(([fetchedWindows, fetchedHangouts]) => {
           setWindows(fetchedWindows);
-          console.log("Windows refreshed after creation:", fetchedWindows);
+          setHangouts(fetchedHangouts);
+          console.log("Calendar data refreshed after update");
         })
         .catch((err) => {
-          console.error("Error refreshing windows:", err);
+          console.error("Error refreshing calendar data:", err);
         });
     }
   };
 
   // Handle event resize (when dragging the handles)
   const handleEventResize = async (resizeInfo) => {
+    // Check if this is a hangout event - ignore hangouts
+    if (
+      resizeInfo.event.extendedProps.eventType === "hangout" ||
+      resizeInfo.event.eventType === "hangout" ||
+      resizeInfo.event.extendedProps.hasOwnProperty("description")
+    ) {
+      resizeInfo.revert();
+      return;
+    }
+
     try {
       // Prepare window data for update
       const windowData = {
@@ -167,6 +197,16 @@ export default function Windows() {
 
   // Handle event drop (when dragging the entire event)
   const handleEventDrop = async (dropInfo) => {
+    // Check if this is a hangout event - ignore hangouts
+    if (
+      dropInfo.event.extendedProps.eventType === "hangout" ||
+      dropInfo.event.eventType === "hangout" ||
+      dropInfo.event.extendedProps.hasOwnProperty("description")
+    ) {
+      dropInfo.revert();
+      return;
+    }
+
     try {
       // Prepare window data for update
       const windowData = {
@@ -188,10 +228,31 @@ export default function Windows() {
 
   // Handle event click to edit
   const handleEventClick = (clickInfo) => {
-    // Get the clicked window's ID
-    const id = parseInt(clickInfo.event.id);
+    const eventId = clickInfo.event.id;
 
-    // Prepare window data for the modal
+    // Check if this is a hangout event using the explicit type
+    if (
+      clickInfo.event.extendedProps.eventType === "hangout" ||
+      clickInfo.event.eventType === "hangout" ||
+      clickInfo.event.extendedProps.hasOwnProperty("description")
+    ) {
+      // Handle hangout click - open hangout modal
+      console.log("Hangout clicked:", clickInfo.event);
+      const hangoutData = {
+        id: eventId,
+        title: clickInfo.event.title,
+        start: clickInfo.event.start,
+        end: clickInfo.event.end,
+        extendedProps: clickInfo.event.extendedProps,
+      };
+
+      setSelectedHangout(hangoutData);
+      setIsHangoutModalOpen(true);
+      return;
+    }
+
+    // This is a window event, handle as before
+    const id = parseInt(eventId);
     const windowData = {
       id: id,
       title: clickInfo.event.title,
@@ -200,9 +261,50 @@ export default function Windows() {
       extendedProps: clickInfo.event.extendedProps,
     };
 
-    // Open the modal with this data
     setSelectedDateInfo(windowData);
     setIsModalOpen(true);
+  };
+
+  // Add this before the return statement
+  const combinedEvents = [
+    ...windows,
+    ...hangouts.map((hangout) => ({
+      ...hangout,
+      // Add additional properties to differentiate hangouts from windows
+      classNames: "hangout-event",
+      editable: false, // Hangouts shouldn't be directly editable through drag/drop
+      eventType: "hangout", // Explicit type property for clearer identification
+    })),
+  ];
+
+  // Add a new function to handle hangout modal close
+  const handleHangoutModalClose = (refresh = false) => {
+    setIsHangoutModalOpen(false);
+    setSelectedHangout(null);
+
+    // Refresh calendar data if needed
+    if (refresh && calendarRef.current) {
+      const calendarApi = calendarRef.current.getApi();
+      const view = calendarApi.view;
+
+      // Get date range from current view
+      const start = view.activeStart.toISOString();
+      const end = view.activeEnd.toISOString();
+
+      // Re-fetch both windows and hangouts
+      Promise.all([
+        getWindowsByDateRange(start, end),
+        getUserHangoutsInRange(new Date(start), new Date(end)),
+      ])
+        .then(([fetchedWindows, fetchedHangouts]) => {
+          setWindows(fetchedWindows);
+          setHangouts(fetchedHangouts);
+          console.log("Calendar data refreshed after hangout update");
+        })
+        .catch((err) => {
+          console.error("Error refreshing calendar data:", err);
+        });
+    }
   };
 
   return (
@@ -228,13 +330,7 @@ export default function Windows() {
                 ? "dayGridMonth,listWeek"
                 : "dayGridMonth,timeGridWeek,timeGridDay",
             }}
-            footerToolbar={
-              isMobile
-                ? {
-                    center: "today",
-                  }
-                : null
-            }
+            events={combinedEvents}
             allDaySlot={false}
             defaultAllDay={false}
             editable={true}
@@ -242,7 +338,6 @@ export default function Windows() {
             selectMirror={true}
             dayMaxEvents={isMobile ? 2 : true}
             weekends={true}
-            events={windows}
             datesSet={handleDatesSet}
             height={isMobile ? "auto" : "auto"}
             contentHeight="auto"
@@ -304,6 +399,13 @@ export default function Windows() {
         onClose={handleModalClose}
         selectInfo={selectedDateInfo}
         editWindowId={selectedDateInfo?.id}
+      />
+
+      {/* Hangout Modal - Add this */}
+      <HangoutFormModal
+        isOpen={isHangoutModalOpen}
+        onClose={handleHangoutModalClose}
+        hangoutData={selectedHangout}
       />
     </div>
   );

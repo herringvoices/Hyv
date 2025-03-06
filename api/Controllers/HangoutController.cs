@@ -168,6 +168,29 @@ namespace Hyv.Controllers
             }
         }
 
+        [HttpDelete("{hangoutId}")]
+        public async Task<ActionResult> DeleteHangout(int hangoutId)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                await _hangoutService.DeleteHangoutAsync(hangoutId, userId);
+                return Ok(new { message = "Hangout deleted successfully" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
         [HttpPut("{hangoutId}")]
         public async Task<ActionResult<HangoutDto>> UpdateHangout(
             int hangoutId,
@@ -191,6 +214,121 @@ namespace Hyv.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 return Unauthorized(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetHangouts(
+            [FromQuery] DateTime start,
+            [FromQuery] DateTime end
+        )
+        {
+            if (start == default || end == default)
+            {
+                return BadRequest("Both start and end date parameters are required");
+            }
+
+            // Get the current user's ID from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            var userId = userIdClaim.Value;
+
+            // Get hangouts for the current user and specified date range
+            var hangouts = await _hangoutService.GetHangoutsByDateRangeAsync(start, end, userId);
+            return Ok(hangouts);
+        }
+
+        [HttpGet("past")]
+        public async Task<IActionResult> GetPastHangouts()
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized("User ID not found in token");
+                }
+
+                var hangouts = await _hangoutService.GetPastHangoutsForUserAsync(userId);
+                return Ok(hangouts);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("upcoming")]
+        public async Task<IActionResult> GetUpcomingHangouts()
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized("User ID not found in token");
+                }
+
+                var hangouts = await _hangoutService.GetUpcomingHangoutsForUserAsync(userId);
+                return Ok(hangouts);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("user/{targetUserId}/past")]
+        public async Task<IActionResult> GetPastHangoutsWithUser(string targetUserId)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized("User ID not found in token");
+                }
+
+                var hangouts = await _hangoutService.GetSharedHangoutsWithUserAsync(
+                    targetUserId,
+                    userId,
+                    pastOnly: true
+                );
+
+                return Ok(hangouts);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("user/{targetUserId}/upcoming")]
+        public async Task<IActionResult> GetUpcomingHangoutsWithUser(string targetUserId)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized("User ID not found in token");
+                }
+
+                var hangouts = await _hangoutService.GetSharedHangoutsWithUserAsync(
+                    targetUserId,
+                    userId,
+                    upcomingOnly: true
+                );
+
+                return Ok(hangouts);
             }
             catch (Exception ex)
             {

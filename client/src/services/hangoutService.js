@@ -1,14 +1,5 @@
 const apiUrl = "/api/hangout";
 
-// Uncomment and adjust this block if you need to use a different API URL in development
-/*
-const apiUrl = process.env.NODE_ENV === 'development' 
-  ? "https://localhost:7242/api/hangout" // Replace with your actual API URL
-  : "/api/hangout";
-
-console.log("Using API URL:", apiUrl); // For debugging
-*/
-
 /**
  * Fetch hangouts for a specific user with optional filtering
  * @param {string} userId - The user's ID
@@ -48,6 +39,36 @@ export const getUserHangouts = async (
   }
 
   return await response.json();
+};
+
+/**
+ * Fetch hangouts for the current user within a date range
+ * @param {Date} start - The start date for the range
+ * @param {Date} end - The end date for the range
+ * @returns {Promise<Array>} - Promise resolving to an array of hangout objects
+ */
+export const getUserHangoutsInRange = async (start, end) => {
+  const startParam = start.toISOString();
+  const endParam = end.toISOString();
+  const url = `${apiUrl}?start=${startParam}&end=${endParam}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch hangouts: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching hangouts:", error);
+    throw error;
+  }
 };
 
 /**
@@ -300,6 +321,146 @@ export const updateHangout = async (hangoutId, hangoutData) => {
     return await response.json();
   } catch (error) {
     console.error("Error updating hangout:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get past hangouts for the current user
+ * @returns {Promise<Array>} - Promise resolving to an array of past hangout objects
+ */
+export const getPastHangouts = async () => {
+  const url = `${apiUrl}/past`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch past hangouts: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching past hangouts:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get upcoming hangouts for the current user
+ * @returns {Promise<Array>} - Promise resolving to an array of upcoming hangout objects
+ */
+export const getUpcomingHangouts = async () => {
+  const url = `${apiUrl}/upcoming`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch upcoming hangouts: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching upcoming hangouts:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get past shared hangouts with a specific user
+ * @param {string} targetUserId - The target user's ID
+ * @returns {Promise<Array>} - Promise resolving to an array of past shared hangout objects
+ */
+export const getPastHangoutsWithUser = async (targetUserId) => {
+  const url = `${apiUrl}/user/${targetUserId}/past`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch past shared hangouts: ${response.status}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching past shared hangouts:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get upcoming shared hangouts with a specific user
+ * @param {string} targetUserId - The target user's ID
+ * @returns {Promise<Array>} - Promise resolving to an array of upcoming shared hangout objects
+ */
+export const getUpcomingHangoutsWithUser = async (targetUserId) => {
+  const url = `${apiUrl}/user/${targetUserId}/upcoming`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch upcoming shared hangouts: ${response.status}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching upcoming shared hangouts:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a hangout
+ * @param {number} hangoutId - ID of the hangout to delete
+ * @returns {Promise<Object>} - Promise resolving to success message
+ */
+export const deleteHangout = async (hangoutId) => {
+  const url = `${apiUrl}/${hangoutId}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to delete hangout: ${response.status} - ${errorText}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error deleting hangout:", error);
     throw error;
   }
 };

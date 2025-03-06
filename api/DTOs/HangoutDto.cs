@@ -10,8 +10,11 @@ namespace Hyv.DTOs
         public DateTime Start { get; set; }
         public DateTime End { get; set; }
         public bool AllDay { get; set; } = false;
+        public string BackgroundColor => "#a16207";
+        public string TextColor => "#fefce8";
+        // public string ClassName => "bg-secondary text-light";
 
-        public ExtendedPropsDto ExtendedProps { get; set; } 
+        public ExtendedPropsDto ExtendedProps { get; set; }
     }
 
     public class ExtendedPropsDto

@@ -2,6 +2,7 @@ using AutoMapper;
 using Hyv.Data;
 using Hyv.DTOs;
 using Hyv.Models;
+using Microsoft.AspNetCore.Http; // Add this
 using Microsoft.EntityFrameworkCore;
 
 namespace Hyv.Services
@@ -35,11 +36,17 @@ namespace Hyv.Services
     {
         private readonly HyvDbContext _dbContext;
         private readonly IMapper _mapper;
+        private readonly IHttpContextAccessor _httpContextAccessor; // Add this
 
-        public WindowService(HyvDbContext dbContext, IMapper mapper)
+        public WindowService(
+            HyvDbContext dbContext,
+            IMapper mapper,
+            IHttpContextAccessor httpContextAccessor
+        ) // Add parameter
         {
             _dbContext = dbContext;
             _mapper = mapper;
+            _httpContextAccessor = httpContextAccessor; // Store the dependency
         }
 
         public async Task<WindowDto> CreateWindowAsync(WindowDto windowDto)
@@ -173,12 +180,15 @@ namespace Hyv.Services
                 await _dbContext.SaveChangesAsync();
             }
 
-            // Now query all windows within the date range where the user is a participant
+            // Now query all windows within the date range where:
+            // 1. The user is a participant
+            // 2. The window is not linked to a hangout
             var windows = await _dbContext
                 .Windows.Where(w =>
                     w.Start >= start
                     && w.End <= end
                     && w.WindowParticipants.Any(p => p.UserId == userId) // User is a participant
+                    && (w.HangoutId == null || w.HangoutId == 0) // Not linked to a hangout
                 )
                 .Include(w => w.User)
                 .Include(w => w.Hangout)
@@ -238,6 +248,7 @@ namespace Hyv.Services
                         w.WindowParticipants.Any(p => p.UserId == userId)
                         && w.Start >= start.Value
                         && w.End <= end.Value
+                        && (w.HangoutId == null || w.HangoutId == 0)
                     )
                     .ToListAsync();
 
@@ -268,8 +279,6 @@ namespace Hyv.Services
                     && w.End <= end.Value
                     && w.WindowParticipants.Any(p => friendUserIds.Contains(p.UserId))
                 );
-
-                // We'll need to further filter for actual overlaps below
             }
 
             // If categoryId is provided, filter to only include windows where participants
@@ -299,6 +308,7 @@ namespace Hyv.Services
                         w.WindowParticipants.Any(p => p.UserId == userId)
                         && w.Start >= start.Value
                         && w.End <= end.Value
+                        && (w.HangoutId == null || w.HangoutId == 0)
                     )
                     .ToListAsync();
 
@@ -421,50 +431,61 @@ namespace Hyv.Services
                         // Update the hangout's start and end times to match the window
                         hangout.ConfirmedStart = window.Start;
                         hangout.ConfirmedEnd = window.End;
+
+                        // Instead of managing window participants directly,
+                        // delegate to the hangout synchronization logic
+                        var hangoutService = new HangoutService(
+                            _dbContext,
+                            _mapper,
+                            _httpContextAccessor
+                        );
+                        await hangoutService.SynchronizeWindowParticipantsWithHangoutGuests(
+                            hangout.Id
+                        );
                     }
                 }
-
-                await _dbContext.SaveChangesAsync();
-
-                // Update participants (removing all except owner and adding new ones)
-                var participantsToRemove = window
-                    .WindowParticipants.Where(p => p.UserId != window.UserId)
-                    .ToList();
-
-                if (participantsToRemove.Any())
+                else
                 {
-                    _dbContext.WindowParticipants.RemoveRange(participantsToRemove);
-                    await _dbContext.SaveChangesAsync();
-                }
-
-                // Add new participants from the DTO
-                if (windowDto.ExtendedProps?.Participants != null)
-                {
-                    // Get current participants to avoid duplicates
-                    var existingParticipantIds = window
-                        .WindowParticipants.Select(p => p.UserId)
+                    // Only manage participants directly if this is NOT a hangout-linked window
+                    var participantsToRemove = window
+                        .WindowParticipants.Where(p => p.UserId != window.UserId)
                         .ToList();
 
-                    foreach (var participant in windowDto.ExtendedProps.Participants)
+                    if (participantsToRemove.Any())
                     {
-                        if (
-                            participant?.UserId != null
-                            && participant.UserId != window.UserId
-                            && // Skip owner (already a participant)
-                            !existingParticipantIds.Contains(participant.UserId)
-                        ) // Skip duplicates
-                        {
-                            _dbContext.WindowParticipants.Add(
-                                new WindowParticipant
-                                {
-                                    WindowId = windowId,
-                                    UserId = participant.UserId,
-                                }
-                            );
-                            existingParticipantIds.Add(participant.UserId);
-                        }
+                        _dbContext.WindowParticipants.RemoveRange(participantsToRemove);
+                        await _dbContext.SaveChangesAsync();
                     }
-                    await _dbContext.SaveChangesAsync();
+
+                    // Add new participants from the DTO
+                    if (windowDto.ExtendedProps?.Participants != null)
+                    {
+                        // Get current participants to avoid duplicates
+                        var existingParticipantIds = window
+                            .WindowParticipants.Select(p => p.UserId)
+                            .ToList();
+
+                        foreach (var participant in windowDto.ExtendedProps.Participants)
+                        {
+                            if (
+                                participant?.UserId != null
+                                && participant.UserId != window.UserId
+                                && // Skip owner (already a participant)
+                                !existingParticipantIds.Contains(participant.UserId)
+                            ) // Skip duplicates
+                            {
+                                _dbContext.WindowParticipants.Add(
+                                    new WindowParticipant
+                                    {
+                                        WindowId = windowId,
+                                        UserId = participant.UserId,
+                                    }
+                                );
+                                existingParticipantIds.Add(participant.UserId);
+                            }
+                        }
+                        await _dbContext.SaveChangesAsync();
+                    }
                 }
 
                 // Update visibilities (remove all and add new ones)
