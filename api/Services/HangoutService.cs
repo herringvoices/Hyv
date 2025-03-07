@@ -52,6 +52,22 @@ namespace Hyv.Services
             bool pastOnly = false,
             bool upcomingOnly = false
         );
+
+        Task<bool> ProcessHangoutRequestResponseAsync(
+            int requestRecipientId,
+            bool accepted,
+            bool createWindow
+        );
+
+        Task SynchronizeWindowParticipantsWithHangoutGuests(int hangoutId);
+
+        // Add these methods to the IHangoutService interface
+        Task CreateJoinRequestAsync(int hangoutId, string userId);
+        Task<int> AcceptJoinRequestAsync(int joinRequestId, string userId);
+        Task RejectJoinRequestAsync(int joinRequestId, string userId);
+        Task<string> GetJoinRequestUserIdAsync(int joinRequestId);
+
+        Task<List<JoinRequestDto>> GetPendingJoinRequestsAsync(string userId);
     }
 
     public class HangoutService : IHangoutService
@@ -624,7 +640,6 @@ namespace Hyv.Services
             return _mapper.Map<IEnumerable<HangoutDto>>(hangouts);
         }
 
-        // Add this new helper method
         public async Task SynchronizeWindowParticipantsWithHangoutGuests(int hangoutId)
         {
             // Get all hangout guests
@@ -823,6 +838,265 @@ namespace Hyv.Services
                 .ToListAsync();
 
             return _mapper.Map<IEnumerable<HangoutDto>>(hangouts);
+        }
+
+        public async Task<bool> ProcessHangoutRequestResponseAsync(
+            int requestRecipientId,
+            bool accepted,
+            bool createWindow
+        )
+        {
+            // Find the request recipient
+            var recipient = await _context
+                .HangoutRequestRecipients.Include(r => r.HangoutRequest)
+                .ThenInclude(hr => hr.Hangout)
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.Id == requestRecipientId);
+
+            if (recipient == null)
+            {
+                throw new KeyNotFoundException(
+                    $"Hangout request recipient with ID {requestRecipientId} not found"
+                );
+            }
+
+            // Get current user ID
+            var currentUserId = _httpContextAccessor.HttpContext.User.FindFirst("sub")?.Value;
+
+            // Verify the recipient is the current user
+            if (recipient.UserId != currentUserId)
+            {
+                throw new UnauthorizedAccessException(
+                    "You are not authorized to respond to this request"
+                );
+            }
+
+            // Update the recipient status based on acceptance
+            recipient.RecipientStatus = accepted ? Status.Accepted : Status.Rejected;
+
+            // If accepted and hangout exists, add user as a guest
+            if (accepted && recipient.HangoutRequest.Hangout != null)
+            {
+                var hangout = recipient.HangoutRequest.Hangout;
+
+                // Check if the user is already a guest
+                var existingGuest = await _context.HangoutGuests.FirstOrDefaultAsync(g =>
+                    g.HangoutId == hangout.Id && g.UserId == currentUserId
+                );
+
+                if (existingGuest == null)
+                {
+                    // Add user as a guest
+                    _context.HangoutGuests.Add(
+                        new HangoutGuest { HangoutId = hangout.Id, UserId = currentUserId }
+                    );
+                }
+
+                // Handle window creation if requested
+                if (createWindow)
+                {
+                    await CreateWindowForHangout(hangout, currentUserId);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        private async Task CreateWindowForHangout(Hangout hangout, string userId)
+        {
+            // Check if a window for this hangout and user already exists
+            var existingWindow = await _context.Windows.FirstOrDefaultAsync(w =>
+                w.HangoutId == hangout.Id && w.UserId == userId
+            );
+
+            if (existingWindow != null)
+            {
+                // Window already exists, no need to create another one
+                return;
+            }
+
+            // Create a new window linked to this hangout
+            var window = new Window
+            {
+                Title = hangout.Title,
+                Start = hangout.ConfirmedStart,
+                End = hangout.ConfirmedEnd,
+                UserId = userId,
+                HangoutId = hangout.Id,
+                Active = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            };
+
+            // Add window participants (all hangout guests)
+            window.WindowParticipants = new List<WindowParticipant>();
+
+            var hangoutGuests = await _context
+                .HangoutGuests.Where(g => g.HangoutId == hangout.Id)
+                .ToListAsync();
+
+            foreach (var guest in hangoutGuests)
+            {
+                window.WindowParticipants.Add(new WindowParticipant { UserId = guest.UserId });
+            }
+
+            _context.Windows.Add(window);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task CreateJoinRequestAsync(int hangoutId, string userId)
+        {
+            // Check if hangout exists
+            var hangout = await _context
+                .Hangouts.Include(h => h.HangoutGuests)
+                .FirstOrDefaultAsync(h => h.Id == hangoutId);
+
+            if (hangout == null)
+            {
+                throw new KeyNotFoundException($"Hangout with ID {hangoutId} not found");
+            }
+
+            // Check if user is already a guest
+            if (hangout.HangoutGuests.Any(hg => hg.UserId == userId))
+            {
+                throw new InvalidOperationException("You are already a guest of this hangout");
+            }
+
+            // Check if there's already a pending request
+            bool hasExistingRequest = await _context.JoinRequests.AnyAsync(jr =>
+                jr.HangoutId == hangoutId && jr.UserId == userId && jr.Status == Status.Pending
+            );
+
+            if (hasExistingRequest)
+            {
+                throw new InvalidOperationException(
+                    "You already have a pending join request for this hangout"
+                );
+            }
+
+            // Create the join request
+            var joinRequest = new JoinRequest
+            {
+                HangoutId = hangoutId,
+                UserId = userId,
+                Status = Status.Pending,
+            };
+
+            await _context.JoinRequests.AddAsync(joinRequest);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<int> AcceptJoinRequestAsync(int joinRequestId, string userId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Get the join request with related entities
+                var joinRequest = await _context
+                    .JoinRequests.Include(jr => jr.Hangout)
+                    .ThenInclude(h => h.HangoutGuests)
+                    .FirstOrDefaultAsync(jr => jr.Id == joinRequestId);
+
+                if (joinRequest == null)
+                {
+                    throw new KeyNotFoundException(
+                        $"Join request with ID {joinRequestId} not found"
+                    );
+                }
+
+                // Check if the current user is authorized (must be a hangout guest)
+                var isGuest = joinRequest.Hangout.HangoutGuests.Any(hg => hg.UserId == userId);
+                if (!isGuest)
+                {
+                    throw new UnauthorizedAccessException(
+                        "You are not authorized to accept this join request"
+                    );
+                }
+
+                // Update status to Accepted
+                joinRequest.Status = Status.Accepted;
+
+                // Add the requester as a hangout guest
+                var hangoutGuest = new HangoutGuest
+                {
+                    HangoutId = joinRequest.HangoutId,
+                    UserId = joinRequest.UserId,
+                    JoinedAt = DateTime.UtcNow,
+                };
+
+                await _context.HangoutGuests.AddAsync(hangoutGuest);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return joinRequest.HangoutId;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        public async Task RejectJoinRequestAsync(int joinRequestId, string userId)
+        {
+            // Get the join request with related entities
+            var joinRequest = await _context
+                .JoinRequests.Include(jr => jr.Hangout)
+                .ThenInclude(h => h.HangoutGuests)
+                .FirstOrDefaultAsync(jr => jr.Id == joinRequestId);
+
+            if (joinRequest == null)
+            {
+                throw new KeyNotFoundException($"Join request with ID {joinRequestId} not found");
+            }
+
+            // Check if the current user is authorized (must be a hangout guest)
+            var isGuest = joinRequest.Hangout.HangoutGuests.Any(hg => hg.UserId == userId);
+            if (!isGuest)
+            {
+                throw new UnauthorizedAccessException(
+                    "You are not authorized to reject this join request"
+                );
+            }
+
+            // Update status to Rejected
+            joinRequest.Status = Status.Rejected;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<string> GetJoinRequestUserIdAsync(int joinRequestId)
+        {
+            var joinRequest = await _context.JoinRequests.FirstOrDefaultAsync(jr =>
+                jr.Id == joinRequestId
+            );
+
+            if (joinRequest == null)
+            {
+                throw new KeyNotFoundException($"Join request with ID {joinRequestId} not found");
+            }
+
+            return joinRequest.UserId;
+        }
+
+        public async Task<List<JoinRequestDto>> GetPendingJoinRequestsAsync(string userId)
+        {
+            // Get all hangouts where the current user is a member
+            var userHangouts = await _context
+                .HangoutGuests.Where(hg => hg.UserId == userId)
+                .Select(hg => hg.HangoutId)
+                .ToListAsync();
+
+            // Get all pending join requests for those hangouts
+            var pendingRequests = await _context
+                .JoinRequests.Where(jr =>
+                    userHangouts.Contains(jr.HangoutId) && jr.Status == Status.Pending
+                )
+                .Include(jr => jr.User)
+                .Include(jr => jr.Hangout)
+                .ToListAsync();
+
+            return _mapper.Map<List<JoinRequestDto>>(pendingRequests);
         }
     }
 }

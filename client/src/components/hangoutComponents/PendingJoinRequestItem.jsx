@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  acceptHangoutRequest,
-  rejectHangoutRequest,
+  acceptJoinRequest,
+  rejectJoinRequest,
 } from "../../services/hangoutService";
 
-function PendingHangoutItem({ request, refreshRequests }) {
+function PendingJoinRequestItem({ request, refreshRequests }) {
   const [confirmModal, setConfirmModal] = useState(false);
   const [modalText, setModalText] = useState("");
   const [responseType, setResponseType] = useState(null);
@@ -13,20 +13,12 @@ function PendingHangoutItem({ request, refreshRequests }) {
 
   const handleResponseClick = (response) => {
     if (response === "accept") {
-      if (request.hangoutRequest.isOpen) {
-        setModalText(
-          `This will create a new open window in your calendar for this hangout time. Are you sure you want to accept this hangout request from ${request.hangoutRequest.sender.fullName}?`
-        );
-        setCreateWindow(true);
-      } else {
-        setModalText(
-          `Are you sure you want to accept this hangout request from ${request.hangoutRequest.sender.fullName}?`
-        );
-        setCreateWindow(false);
-      }
+      setModalText(
+        `Do you want to create a new window for ${request.user.fullName} to join this hangout?`
+      );
     } else {
       setModalText(
-        `Are you sure you want to decline this hangout request from ${request.hangoutRequest.sender.fullName}?`
+        `Are you sure you want to decline this join request from ${request.user.fullName}?`
       );
     }
 
@@ -39,13 +31,13 @@ function PendingHangoutItem({ request, refreshRequests }) {
 
     try {
       if (responseType === "accept") {
-        await acceptHangoutRequest(request.id, createWindow);
+        await acceptJoinRequest(request.id, createWindow);
       } else {
-        await rejectHangoutRequest(request.id);
+        await rejectJoinRequest(request.id);
       }
       await refreshRequests();
     } catch (error) {
-      console.error(`Failed to ${responseType} hangout request:`, error);
+      console.error(`Failed to ${responseType} join request:`, error);
     }
   };
 
@@ -63,25 +55,15 @@ function PendingHangoutItem({ request, refreshRequests }) {
     );
   };
 
-  // Get the sender info and request details
-  const sender = request.hangoutRequest.sender;
-  const title = request.hangoutRequest.title;
-  const description = request.hangoutRequest.description;
-  const proposedStart = request.hangoutRequest.proposedStart;
-  const proposedEnd = request.hangoutRequest.proposedEnd;
-
-  // Get information about other invitees
-  const otherInvitees = request.invitations || [];
-
   return (
     <li className="flex flex-col my-3 text-dark bg-primary rounded-md">
-      {/* Sender info */}
+      {/* Requester info */}
       <div className="flex items-center mb-2 bg-dark border border-primary rounded-tl-md rounded-tr-md text-primary">
         <div className="m-2">
-          {sender.profilePicture ? (
+          {request.user.profilePicture ? (
             <img
-              src={sender.profilePicture}
-              alt={`${sender.fullName}'s profile`}
+              src={request.user.profilePicture}
+              alt={`${request.user.fullName}'s profile`}
               className="w-10 h-10 rounded-full"
             />
           ) : (
@@ -90,32 +72,19 @@ function PendingHangoutItem({ request, refreshRequests }) {
         </div>
         <div className="text-left">
           <div className="">
-            <strong>{sender.fullName}</strong> wants to hang out!
+            <strong>{request.user.fullName}</strong> wants to join your hangout!
           </div>
         </div>
       </div>
 
       {/* Hangout details */}
       <div className="mb-2 m-2 ms-3">
-        <h3 className="text-xl font-bold">{title}</h3>
-        <p className="text-sm mb-1">{description}</p>
+        <h3 className="text-xl font-bold">{request.hangout.title}</h3>
+        <p className="text-sm mb-1">{request.hangout.description}</p>
         <p className="text-sm">
-          <strong>When:</strong> {formatDate(proposedStart)} to{" "}
-          {formatDate(proposedEnd)}
+          <strong>When:</strong> {formatDate(request.hangout.confirmedStart)} to{" "}
+          {formatDate(request.hangout.confirmedEnd)}
         </p>
-
-        {/* Display other invitees if present */}
-        {otherInvitees.length > 0 && (
-          <div className="text-sm mt-1">
-            <strong>Also invited:</strong>{" "}
-            {otherInvitees.map((invitee, index) => (
-              <span key={index}>
-                {invitee.recipientName} ({invitee.recipientStatus})
-                {index < otherInvitees.length - 1 ? ", " : ""}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Action buttons */}
@@ -140,11 +109,21 @@ function PendingHangoutItem({ request, refreshRequests }) {
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-primary p-4 rounded-md font-bold max-w-md">
             <p>{modalText}</p>
-            {createWindow && responseType === "accept" && (
-              <p className="text-sm mt-2 text-gray-700">
-                Creating a window will block off this time in your calendar and
-                help your friends see when you're available.
-              </p>
+            {responseType === "accept" && (
+              <div className="mt-2">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={createWindow}
+                    onChange={() => setCreateWindow(!createWindow)}
+                    className="mr-2"
+                  />
+                  Create a window for this user
+                </label>
+                <p className="text-sm mt-1 text-gray-700">
+                  This will create a window in their calendar for this hangout time.
+                </p>
+              </div>
             )}
             <div className="mt-4 flex justify-end gap-2">
               <button
@@ -167,4 +146,4 @@ function PendingHangoutItem({ request, refreshRequests }) {
   );
 }
 
-export default PendingHangoutItem;
+export default PendingJoinRequestItem;
