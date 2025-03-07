@@ -3,6 +3,7 @@ import { Dialog } from "radix-ui";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createHangoutRequest } from "../../services/hangoutService";
 import { getFriends } from "../../services/friendService";
+import { getHiveWindows } from "../../services/windowServices";
 
 export default function HangoutRequestModal({ isOpen, onClose, windowInfo }) {
   // Form state
@@ -12,7 +13,7 @@ export default function HangoutRequestModal({ isOpen, onClose, windowInfo }) {
   const [startTime, setStartTime] = useState("");
   const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [isHangoutOpen, setIsHangoutOpen] = useState(true); // This is correct - fixed naming
+  const [isHangoutOpen, setIsHangoutOpen] = useState(false); // This is correct - fixed naming
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -21,11 +22,10 @@ export default function HangoutRequestModal({ isOpen, onClose, windowInfo }) {
   const [originalParticipantIds, setOriginalParticipantIds] = useState([]);
 
   // Friend search state
-  const [showFriendSearchModal, setShowFriendSearchModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [selectedFriends, setSelectedFriends] = useState([]);
+  const [availableFriends, setAvailableFriends] = useState([]);
+  const [isLoadingFriends, setIsLoadingFriends] = useState(false);
+  const [showAvailableFriendsPanel, setShowAvailableFriendsPanel] =
+    useState(false);
 
   // Reset form and initialize with window data
   useEffect(() => {
@@ -97,10 +97,15 @@ export default function HangoutRequestModal({ isOpen, onClose, windowInfo }) {
       }
 
       // Reset other states
-      setIsHangoutOpen(true);
+      setIsHangoutOpen(false);
       setError(null);
     }
   }, [isOpen, windowInfo]);
+
+  // Add effect to update available friends when dates/times change
+  useEffect(() => {
+    fetchAvailableFriends();
+  }, [startDate, startTime, endDate, endTime]);
 
   // Handle search for friends
   const handleSearch = async () => {
@@ -237,6 +242,52 @@ export default function HangoutRequestModal({ isOpen, onClose, windowInfo }) {
     }
   };
 
+  // Add this function to fetch available friends
+  const fetchAvailableFriends = async () => {
+    // Skip if we don't have valid date/time values
+    if (!startDate || !startTime || !endDate || !endTime) return;
+
+    setIsLoadingFriends(true);
+    try {
+      const startDateTime = new Date(`${startDate}T${startTime}`);
+      const endDateTime = new Date(`${endDate}T${endTime}`);
+
+      // Use existing getHiveWindows function to get friends with open windows
+      const windows = await getHiveWindows(
+        startDateTime.toISOString(),
+        endDateTime.toISOString()
+      );
+
+      // Extract unique friend data from windows
+      const friendsMap = new Map();
+      windows.forEach((window) => {
+        window.extendedProps.participants?.forEach((participant) => {
+          // Skip if it's already in our original participants list
+          if (
+            participant.userId &&
+            !friendsMap.has(participant.userId) &&
+            !originalParticipantIds.includes(participant.userId)
+          ) {
+            friendsMap.set(participant.userId, {
+              id: participant.userId,
+              fullName: participant.user?.fullName || "Unknown User",
+              isAdded: hangoutRequestRecipients.some(
+                (r) => r.id === participant.userId
+              ),
+            });
+          }
+        });
+      });
+
+      setAvailableFriends(Array.from(friendsMap.values()));
+    } catch (error) {
+      console.error("Error fetching available friends:", error);
+      setError("Failed to load available friends");
+    } finally {
+      setIsLoadingFriends(false);
+    }
+  };
+
   return (
     <Dialog.Root open={isOpen} onOpenChange={() => onClose(false)}>
       <Dialog.Portal>
@@ -352,10 +403,13 @@ export default function HangoutRequestModal({ isOpen, onClose, windowInfo }) {
                 <button
                   type="button"
                   className="text-primary hover:text-primary/80"
-                  onClick={() => setShowFriendSearchModal(true)}
+                  onClick={() => {
+                    fetchAvailableFriends(); // Refresh the list right before opening
+                    setShowAvailableFriendsPanel(true);
+                  }}
                 >
                   <FontAwesomeIcon icon="plus" className="mr-1" />
-                  Add Friends
+                  Add Available Friends
                 </button>
               </div>
 
@@ -461,78 +515,65 @@ export default function HangoutRequestModal({ isOpen, onClose, windowInfo }) {
 
       {/* Friend Selection Modal */}
       <Dialog.Root
-        open={showFriendSearchModal}
-        onOpenChange={handleFriendModalClose}
+        open={showAvailableFriendsPanel}
+        onOpenChange={() => setShowAvailableFriendsPanel(false)}
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-[60]" />
           <Dialog.Content className="fixed border border-primary shadow-primary shadow-lg top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-dark p-6 rounded-lg w-11/12 max-w-md max-h-[90vh] overflow-y-auto z-[60]">
             <Dialog.Title className="text-xl font-bold text-primary mb-4">
-              Add Friends
+              Available Friends
             </Dialog.Title>
 
-            {/* Friend Search Input */}
-            <div className="flex mb-4">
-              <input
-                type="text"
-                placeholder="Search for friends..."
-                className="flex-1 px-3 py-2 rounded-l border border-primary bg-dark text-light"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              />
-              <button
-                type="button"
-                className="bg-primary text-dark px-4 py-2 rounded-r"
-                onClick={handleSearch}
-                disabled={isSearching}
-              >
-                {isSearching ? (
-                  <FontAwesomeIcon icon="spinner" spin />
-                ) : (
-                  <FontAwesomeIcon icon="search" />
-                )}
-              </button>
+            <div className="mb-4 text-sm text-light">
+              These friends have open windows during your proposed hangout time:
             </div>
 
-            {/* Search Results with Checkboxes */}
+            {/* Available Friends List */}
             <div className="border border-primary rounded p-2 max-h-60 overflow-y-auto mb-4">
-              {searchResults.length === 0 ? (
+              {isLoadingFriends ? (
+                <div className="flex justify-center items-center py-6">
+                  <FontAwesomeIcon
+                    icon="spinner"
+                    spin
+                    className="text-primary text-xl"
+                  />
+                </div>
+              ) : availableFriends.length === 0 ? (
                 <p className="text-gray-400 text-center text-sm py-2">
-                  {searchQuery
-                    ? "No results found"
-                    : "Search for friends to add"}
+                  No friends available during this time
                 </p>
               ) : (
                 <ul className="divide-y divide-gray-700">
-                  {searchResults.map((friend) => {
-                    const isSelected = selectedFriends.some(
-                      (f) => f.id === friend.id
+                  {availableFriends.map((friend) => {
+                    const isAdded = hangoutRequestRecipients.some(
+                      (recipient) => recipient.id === friend.id
                     );
 
                     return (
                       <li
                         key={friend.id}
-                        className={`py-2 px-2 flex items-center cursor-pointer hover:bg-gray-800 ${
-                          isSelected ? "bg-gray-800/40" : ""
-                        }`}
-                        onClick={() => toggleFriendSelection(friend)}
+                        className="py-2 px-2 flex justify-between items-center"
                       >
-                        <div
-                          className={`w-5 h-5 border rounded mr-3 flex items-center justify-center ${
-                            isSelected
-                              ? "bg-primary border-primary"
-                              : "border-gray-400"
+                        <span className="text-light">{friend.fullName}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            isAdded
+                              ? handleRemoveRecipient(friend.id)
+                              : handleAddRecipient(friend)
+                          }
+                          className={`px-2 py-1 rounded ${
+                            isAdded
+                              ? "bg-red-600 hover:bg-red-700"
+                              : "bg-green-600 hover:bg-green-700"
                           }`}
                         >
-                          {isSelected && (
-                            <FontAwesomeIcon
-                              icon="check"
-                              className="text-xs text-dark"
-                            />
-                          )}
-                        </div>
-                        <span className="text-light">{friend.fullName}</span>
+                          <FontAwesomeIcon
+                            icon={isAdded ? "times" : "plus"}
+                            className="text-light"
+                          />
+                        </button>
                       </li>
                     );
                   })}
@@ -540,25 +581,13 @@ export default function HangoutRequestModal({ isOpen, onClose, windowInfo }) {
               )}
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2 mt-4">
+            <div className="flex justify-end">
               <button
                 type="button"
                 className="px-4 py-2 border border-gray-600 rounded text-light hover:bg-gray-800"
-                onClick={handleFriendModalClose}
+                onClick={() => setShowAvailableFriendsPanel(false)}
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="px-4 py-2 bg-primary text-dark rounded hover:bg-primary/90 disabled:opacity-50"
-                onClick={addSelectedFriends}
-                disabled={selectedFriends.length === 0}
-              >
-                Add{" "}
-                {selectedFriends.length > 0
-                  ? `(${selectedFriends.length})`
-                  : ""}
+                Done
               </button>
             </div>
 

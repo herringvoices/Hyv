@@ -237,7 +237,7 @@ export default function Windows() {
       clickInfo.event.extendedProps.hasOwnProperty("description")
     ) {
       // Handle hangout click - open hangout modal
-      console.log("Hangout clicked:", clickInfo.event);
+
       const hangoutData = {
         id: eventId,
         title: clickInfo.event.title,

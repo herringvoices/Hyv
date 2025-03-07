@@ -14,7 +14,7 @@ function PendingJoinRequestItem({ request, refreshRequests }) {
   const handleResponseClick = (response) => {
     if (response === "accept") {
       setModalText(
-        `Do you want to create a new window for ${request.user.fullName} to join this hangout?`
+        `Are you sure you want to accept this join request from ${request.user.fullName}?`
       );
     } else {
       setModalText(
@@ -82,8 +82,8 @@ function PendingJoinRequestItem({ request, refreshRequests }) {
         <h3 className="text-xl font-bold">{request.hangout.title}</h3>
         <p className="text-sm mb-1">{request.hangout.description}</p>
         <p className="text-sm">
-          <strong>When:</strong> {formatDate(request.hangout.confirmedStart)} to{" "}
-          {formatDate(request.hangout.confirmedEnd)}
+          <strong>When:</strong> {formatDate(request.hangout.start)} to{" "}
+          {formatDate(request.hangout.end)}
         </p>
       </div>
 
@@ -109,22 +109,6 @@ function PendingJoinRequestItem({ request, refreshRequests }) {
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-primary p-4 rounded-md font-bold max-w-md">
             <p>{modalText}</p>
-            {responseType === "accept" && (
-              <div className="mt-2">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={createWindow}
-                    onChange={() => setCreateWindow(!createWindow)}
-                    className="mr-2"
-                  />
-                  Create a window for this user
-                </label>
-                <p className="text-sm mt-1 text-gray-700">
-                  This will create a window in their calendar for this hangout time.
-                </p>
-              </div>
-            )}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={handleCancel}
