@@ -43,7 +43,7 @@ export default function WindowFormModal({
     setStartTime("");
     setEndDate("");
     setEndTime("");
-    setDaysOfNotice(1);
+    setDaysOfNotice(0);
     setActivityType("open");
     setActivityDescription("");
     setSelectedFriends([]);
