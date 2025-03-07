@@ -464,3 +464,125 @@ export const deleteHangout = async (hangoutId) => {
     throw error;
   }
 };
+
+/**
+ * Send a request to join an existing hangout
+ * @param {number} hangoutId - ID of the hangout to join
+ * @returns {Promise<Object>} - Promise resolving to success message
+ */
+export const sendJoinRequest = async (hangoutId) => {
+  const url = `${apiUrl}/${hangoutId}/join-request`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to send join request: ${response.status} - ${errorText}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error sending join request:", error);
+    throw error;
+  }
+};
+
+/**
+ * Accept a join request to a hangout you're part of
+ * @param {number} joinRequestId - ID of the join request to accept
+ * @param {boolean} createNewWindow - Whether to create a new window for the requester
+ * @returns {Promise<Object>} - Promise resolving to success message
+ */
+export const acceptJoinRequest = async (
+  joinRequestId,
+  createNewWindow = false
+) => {
+  const url = `${apiUrl}/join-request/${joinRequestId}/accept?newWindow=${createNewWindow}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to accept join request: ${response.status} - ${errorText}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error accepting join request:", error);
+    throw error;
+  }
+};
+
+/**
+ * Reject a join request to a hangout you're part of
+ * @param {number} joinRequestId - ID of the join request to reject
+ * @returns {Promise<Object>} - Promise resolving to success message
+ */
+export const rejectJoinRequest = async (joinRequestId) => {
+  const url = `${apiUrl}/join-request/${joinRequestId}/reject`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to reject join request: ${response.status} - ${errorText}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error rejecting join request:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get pending join requests for hangouts you're a member of
+ * @returns {Promise<Array>} - Promise resolving to an array of join request objects
+ */
+export const getPendingJoinRequests = async () => {
+  const url = `${apiUrl}/pending-join-requests`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch pending join requests: ${response.status}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching pending join requests:", error);
+    throw error;
+  }
+};

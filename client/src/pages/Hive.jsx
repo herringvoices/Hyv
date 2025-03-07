@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { getHiveWindows } from "../services/windowServices";
 import HangoutRequestModal from "../components/hangouts/HangoutRequestModal";
+import JoinRequestModal from "../components/hangouts/JoinRequestModal";
 
 // Import the FullCalendar packages
 import FullCalendar from "@fullcalendar/react";
@@ -9,7 +10,8 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
 // Import Radix components correctly based on your package.json
-import { Select } from "radix-ui";
+import { Select, Toast } from "radix-ui";
+import { getAllCategories } from "../services/friendshipCategoryService";
 
 export default function Hive() {
   const [windows, setWindows] = useState([]);
@@ -27,20 +29,18 @@ export default function Hive() {
 
   // State for hangout request modal
   const [showHangoutRequestModal, setShowHangoutRequestModal] = useState(false);
+  const [showJoinRequestModal, setShowJoinRequestModal] = useState(false);
   const [selectedWindow, setSelectedWindow] = useState(null);
+
+  // Toast state
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
   // Fetch categories on component mount
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        // Typically you would fetch categories from an API
-        // For now we'll use placeholder data
-        const fetchedCategories = [
-          { id: 1, name: "Close Friends" },
-          { id: 2, name: "Family" },
-          { id: 3, name: "Work" },
-          { id: 4, name: "School" },
-        ];
+        const fetchedCategories = await getAllCategories();
         setCategories(fetchedCategories);
       } catch (err) {
         console.error("Error fetching categories:", err);
@@ -130,21 +130,41 @@ export default function Hive() {
     }
   };
 
-  // Handle window click to open hangout request modal
+  // Handle window click to open appropriate modal
   const handleEventClick = (clickInfo) => {
     setSelectedWindow(clickInfo.event);
-    setShowHangoutRequestModal(true);
+
+    // Check if this is a window with a hangoutId > 0
+    const hangoutId = clickInfo.event.extendedProps.hangoutId;
+
+    if (hangoutId > 0) {
+      // This is a hangout window, show join request modal
+      setShowJoinRequestModal(true);
+    } else {
+      // This is a regular window, show hangout request modal
+      setShowHangoutRequestModal(true);
+    }
   };
 
-  // Handle modal close
+  // Handle hangout request modal close
   const handleHangoutRequestModalClose = (success) => {
     setShowHangoutRequestModal(false);
     setSelectedWindow(null);
 
-    // If hangout request was successfully created, you could add additional logic here
-    // e.g., show a success message, refresh data, etc.
     if (success) {
-      // Optional success handling
+      // Show success message or refresh data if needed
+    }
+  };
+
+  // Handle join request modal close
+  const handleJoinRequestModalClose = (success) => {
+    setShowJoinRequestModal(false);
+    setSelectedWindow(null);
+
+    if (success) {
+      // Show success message with Radix Toast
+      setToastMessage("Join request sent successfully!");
+      setToastOpen(true);
     }
   };
 
@@ -165,11 +185,11 @@ export default function Hive() {
             </Select.Trigger>
 
             <Select.Portal>
-              <Select.Content className="bg-white p-2 rounded shadow-lg z-50">
+              <Select.Content className="bg-primary text-dark p-2 rounded shadow-lg z-50">
                 <Select.Viewport>
                   <Select.Item
                     value="all"
-                    className="flex items-center px-2 py-1 cursor-pointer hover:bg-gray-100 rounded"
+                    className="flex items-center px-2 py-1 cursor-pointer hover:bg-dark hover:text-primary rounded"
                   >
                     <Select.ItemText>All categories</Select.ItemText>
                     <Select.ItemIndicator className="ml-2">
@@ -180,7 +200,7 @@ export default function Hive() {
                     <Select.Item
                       key={category.id}
                       value={category.id.toString()}
-                      className="flex items-center px-2 py-1 cursor-pointer hover:bg-gray-100 rounded"
+                      className="flex items-center px-2 py-1 cursor-pointer hover:bg-dark hover:text-primary rounded"
                     >
                       <Select.ItemText>{category.name}</Select.ItemText>
                       <Select.ItemIndicator className="ml-2">
@@ -277,6 +297,29 @@ export default function Hive() {
           windowInfo={selectedWindow}
         />
       )}
+
+      {/* Join Request Modal */}
+      {showJoinRequestModal && (
+        <JoinRequestModal
+          isOpen={showJoinRequestModal}
+          onClose={handleJoinRequestModalClose}
+          windowInfo={selectedWindow}
+        />
+      )}
+
+      {/* Toast Notification */}
+      <Toast.Provider>
+        <Toast.Root
+          className="bg-primary text-dark px-4 py-2 rounded-md shadow-md max-w-sm"
+          open={toastOpen}
+          onOpenChange={setToastOpen}
+          duration={5000}
+        >
+          <Toast.Title className="font-bold">Success</Toast.Title>
+          <Toast.Description>{toastMessage}</Toast.Description>
+        </Toast.Root>
+        <Toast.Viewport className="fixed bottom-4 right-4 flex flex-col gap-2 p-4" />
+      </Toast.Provider>
     </div>
   );
 }

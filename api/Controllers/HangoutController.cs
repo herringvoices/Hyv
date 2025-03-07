@@ -149,6 +149,87 @@ namespace Hyv.Controllers
             }
         }
 
+        [HttpPost("{hangoutId}/join-request")]
+        public async Task<ActionResult> SendJoinRequest(int hangoutId)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                await _hangoutService.CreateJoinRequestAsync(hangoutId, userId);
+                return Ok(new { message = "Join request sent successfully" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPost("join-request/{joinRequestId}/accept")]
+        public async Task<ActionResult> AcceptJoinRequest(
+            int joinRequestId,
+            [FromQuery] bool newWindow = false
+        )
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var hangoutId = await _hangoutService.AcceptJoinRequestAsync(joinRequestId, userId);
+
+                // Get the requester's userId for cleanup
+                var requesterUserId = await _hangoutService.GetJoinRequestUserIdAsync(
+                    joinRequestId
+                );
+
+                // Run cleanup for the requester
+                await _hangoutService.HangoutAcceptCleanup(hangoutId, requesterUserId, newWindow);
+
+                return Ok(new { message = "Join request accepted" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPost("join-request/{joinRequestId}/reject")]
+        public async Task<ActionResult> RejectJoinRequest(int joinRequestId)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                await _hangoutService.RejectJoinRequestAsync(joinRequestId, userId);
+                return Ok(new { message = "Join request rejected" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
         [HttpDelete("{hangoutId}/leave")]
         public async Task<ActionResult> LeaveHangout(int hangoutId)
         {
@@ -329,6 +410,21 @@ namespace Hyv.Controllers
                 );
 
                 return Ok(hangouts);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("pending-join-requests")]
+        public async Task<ActionResult<List<JoinRequestDto>>> GetPendingJoinRequests()
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var pendingRequests = await _hangoutService.GetPendingJoinRequestsAsync(userId);
+                return Ok(pendingRequests);
             }
             catch (Exception ex)
             {
