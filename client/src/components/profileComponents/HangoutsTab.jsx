@@ -6,8 +6,10 @@ import {
   getPendingHangoutRequests,
   getUpcomingHangouts,
   getPastHangouts,
+  getPendingJoinRequests,
 } from "../../services/hangoutService";
 import PendingHangoutItem from "../hangoutComponents/PendingHangoutItem";
+import PendingJoinRequestItem from "../hangoutComponents/PendingJoinRequestItem";
 import SharedUpcomingHangoutItem from "../friendsComponents/SharedUpcomingHangoutItem";
 import SharedPastHangoutItem from "../friendsComponents/SharedPastHangoutItem";
 import Spinner from "../misc/Spinner";
@@ -15,13 +17,16 @@ import Spinner from "../misc/Spinner";
 function HangoutsTab() {
   const [openItem, setOpenItem] = useState(null);
   const [pendingHangouts, setPendingHangouts] = useState([]);
+  const [pendingJoinRequests, setPendingJoinRequests] = useState([]);
   const [upcomingHangouts, setUpcomingHangouts] = useState([]);
   const [pastHangouts, setPastHangouts] = useState([]);
   const [isLoadingPending, setIsLoadingPending] = useState(true);
+  const [isLoadingJoinRequests, setIsLoadingJoinRequests] = useState(true);
   const [isLoadingUpcoming, setIsLoadingUpcoming] = useState(false);
   const [isLoadingPast, setIsLoadingPast] = useState(false);
   const [upcomingError, setUpcomingError] = useState(null);
   const [pastError, setPastError] = useState(null);
+  const [joinRequestsError, setJoinRequestsError] = useState(null);
 
   // Chevron animation variants
   const chevronVariants = {
@@ -38,6 +43,20 @@ function HangoutsTab() {
       console.error("Error fetching pending hangouts:", error);
     } finally {
       setIsLoadingPending(false);
+    }
+  };
+
+  const fetchPendingJoinRequests = async () => {
+    try {
+      setIsLoadingJoinRequests(true);
+      setJoinRequestsError(null);
+      const data = await getPendingJoinRequests();
+      setPendingJoinRequests(data);
+    } catch (error) {
+      console.error("Error fetching pending join requests:", error);
+      setJoinRequestsError("Failed to load join requests");
+    } finally {
+      setIsLoadingJoinRequests(false);
     }
   };
 
@@ -69,9 +88,10 @@ function HangoutsTab() {
     }
   };
 
-  // Initial load of pending hangouts
+  // Initial load of pending hangouts and join requests
   useEffect(() => {
     fetchPendingHangouts();
+    fetchPendingJoinRequests();
   }, []);
 
   // Load data when accordion sections are opened
@@ -96,6 +116,9 @@ function HangoutsTab() {
     }
   };
 
+  // Calculate total pending items for badge display
+  const totalPendingItems = pendingHangouts.length + pendingJoinRequests.length;
+
   return (
     <div className="bg-dark/70 rounded-md p-4 text-light">
       <h2 className="text-primary text-2xl md:text-3xl font-bold mb-4">
@@ -114,10 +137,10 @@ function HangoutsTab() {
         >
           <Accordion.Trigger className="w-full flex items-center justify-between px-3 md:px-4">
             <h3 className="text-xl md:text-2xl my-2 md:my-3 text-primary">
-              Pending Hangout Requests
-              {pendingHangouts.length > 0 && (
+              Pending Requests
+              {totalPendingItems > 0 && (
                 <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                  {pendingHangouts.length}
+                  {totalPendingItems}
                 </span>
               )}
             </h3>
@@ -133,19 +156,49 @@ function HangoutsTab() {
             </motion.div>
           </Accordion.Trigger>
           <Accordion.Content className="px-2 py-2">
+            {/* Hangout Requests Section */}
+            <h4 className="text-lg font-semibold mb-2 text-primary">
+              Hangout Invitations
+            </h4>
             {isLoadingPending ? (
               <div className="flex justify-center p-4">
                 <Spinner />
               </div>
             ) : pendingHangouts.length === 0 ? (
-              <p className="text-light p-2">No pending hangout requests</p>
+              <p className="text-light p-2 mb-4">
+                No pending hangout invitations
+              </p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-2 mb-4">
                 {pendingHangouts.map((request) => (
                   <PendingHangoutItem
                     key={request.id}
                     request={request}
                     refreshRequests={fetchPendingHangouts}
+                  />
+                ))}
+              </ul>
+            )}
+
+            {/* Join Requests Section */}
+            <h4 className="text-lg font-semibold mb-2 text-primary">
+              Join Requests
+            </h4>
+            {isLoadingJoinRequests ? (
+              <div className="flex justify-center p-4">
+                <Spinner />
+              </div>
+            ) : joinRequestsError ? (
+              <p className="text-red-400 p-2">{joinRequestsError}</p>
+            ) : pendingJoinRequests.length === 0 ? (
+              <p className="text-light p-2">No pending join requests</p>
+            ) : (
+              <ul className="space-y-2">
+                {pendingJoinRequests.map((request) => (
+                  <PendingJoinRequestItem
+                    key={request.id}
+                    request={request}
+                    refreshRequests={fetchPendingJoinRequests}
                   />
                 ))}
               </ul>
