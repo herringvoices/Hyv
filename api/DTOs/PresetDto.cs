@@ -2,7 +2,7 @@ namespace Hyv.DTOs
 {
     public class PresetDto
     {
-        public string Id { get; set; } // FullCalendar expects a string ID
+        public string? Id { get; set; } // FullCalendar expects a string ID
         public string Title { get; set; }
         public DateTime Start { get; set; }
         public DateTime End { get; set; }

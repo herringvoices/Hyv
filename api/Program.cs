@@ -140,13 +140,14 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendRequestService, FriendRequestService>();
-builder.Services.AddScoped<IFriendService, FriendService>(); 
-builder.Services.AddScoped<ITagalongService, TagalongService>(); 
-builder.Services.AddScoped<INotificationService, NotificationService>(); 
+builder.Services.AddScoped<IFriendService, FriendService>();
+builder.Services.AddScoped<ITagalongService, TagalongService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IFriendshipCategoryService, FriendshipCategoryService>();
-builder.Services.AddScoped<ICategoryMemberService, CategoryMemberService>(); 
+builder.Services.AddScoped<ICategoryMemberService, CategoryMemberService>();
 builder.Services.AddScoped<IHangoutService, HangoutService>();
-builder.Services.AddScoped<IWindowService, WindowService>(); 
+builder.Services.AddScoped<IWindowService, WindowService>();
+builder.Services.AddScoped<IPresetService, PresetService>();
 
 // ✅ Register AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
