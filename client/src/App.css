@@ -1,0 +1,41 @@
+/* Add to your CSS file */
+.fc-event-dragging,
+.fc-mirror,
+.preset-item.fc-event.fc-event-dragging {
+  opacity: 0.8 !important;
+  background-color: #64748b !important;
+  border-color: #475569 !important;
+  color: white !important;
+  border-radius: 0.375rem !important;
+  padding: 0.75rem !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  z-index: 9999 !important;
+}
+
+/* Add these more specific rules */
+body .fc-event.fc-event-dragging,
+body .fc-event-mirror,
+body .preset-drag-mirror,
+body .preset-item.fc-dragging,
+body .fc-daygrid-event.fc-dragging {
+  opacity: 0.8 !important;
+  background-color: #64748b !important;
+  border-color: #475569 !important;
+  color: white !important;
+  border-radius: 0.375rem !important;
+  padding: 0.75rem !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  z-index: 9999 !important;
+  display: block !important;
+  visibility: visible !important;
+  pointer-events: none !important;
+}
+
+/* Target the drag mirror more directly */
+.preset-drag-mirror {
+  position: fixed !important;
+  margin: 0 !important;
+  display: block !important;
+  visibility: visible !important;
+  width: 200px !important;
+}

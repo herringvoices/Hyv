@@ -151,7 +151,7 @@ export const applyPreset = async (presetId, targetDate) => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ targetDate }),
+      body: JSON.stringify({ targetDate: targetDate.toISOString() }),
     });
 
     if (!response.ok) {
