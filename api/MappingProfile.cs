@@ -351,7 +351,8 @@ public class MappingProfile : Profile
         // 12. PresetParticipant <-> PresetParticipantDto
         // ================================
         CreateMap<PresetParticipant, PresetParticipantDto>()
-            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId));
+            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
+            .ForMember(dest => dest.Preset, opt => opt.Ignore());
         CreateMap<PresetParticipantDto, PresetParticipant>()
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
             .ForMember(dest => dest.User, opt => opt.Ignore())
@@ -360,7 +361,8 @@ public class MappingProfile : Profile
         // ================================
         // 13. PresetVisibility <-> PresetVisibilityDto
         // ================================
-        CreateMap<PresetVisibility, PresetVisibilityDto>();
+        CreateMap<PresetVisibility, PresetVisibilityDto>()
+            .ForMember(dest => dest.Preset, opt => opt.Ignore());
         CreateMap<PresetVisibilityDto, PresetVisibility>()
             .ForMember(dest => dest.Preset, opt => opt.Ignore())
             .ForMember(dest => dest.FriendshipCategory, opt => opt.Ignore());

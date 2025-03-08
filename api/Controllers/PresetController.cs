@@ -32,7 +32,11 @@ namespace Hyv.Controllers
                 }
 
                 var createdPreset = await _presetService.CreatePresetAsync(presetDto, userId);
-                return CreatedAtAction(nameof(GetPreset), new { id = createdPreset.Id }, createdPreset);
+                return CreatedAtAction(
+                    nameof(GetPreset),
+                    new { id = createdPreset.Id },
+                    createdPreset
+                );
             }
             catch (Exception ex)
             {
@@ -142,6 +146,34 @@ namespace Hyv.Controllers
             {
                 _logger.LogError(ex, "Error deleting preset");
                 return StatusCode(500, "An error occurred while deleting the preset");
+            }
+        }
+
+        [HttpDelete("all")]
+        public async Task<IActionResult> DeleteAllPresets()
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized("User ID not found in token");
+                }
+
+                bool result = await _presetService.DeleteAllPresetsAsync(userId);
+                if (result)
+                {
+                    return Ok(new { message = "All presets deleted successfully" });
+                }
+                else
+                {
+                    return Ok(new { message = "No presets found to delete" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting all presets");
+                return StatusCode(500, "An error occurred while deleting presets");
             }
         }
 

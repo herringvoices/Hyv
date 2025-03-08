@@ -13,6 +13,7 @@ namespace Hyv.Services
         Task<PresetDto> GetPresetByIdAsync(int presetId, string userId);
         Task<PresetDto> UpdatePresetAsync(int presetId, PresetDto presetDto, string userId);
         Task<bool> DeletePresetAsync(int presetId, string userId);
+        Task<bool> DeleteAllPresetsAsync(string userId); // Add this line
         Task<WindowDto> ApplyPresetAsync(int presetId, DateTime targetDate, string userId);
     }
 
@@ -263,6 +264,41 @@ namespace Hyv.Services
 
             // Delete the preset
             _dbContext.Presets.Remove(preset);
+            await _dbContext.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<bool> DeleteAllPresetsAsync(string userId)
+        {
+            // Find all presets for this user
+            var presets = await _dbContext
+                .Presets.Include(p => p.PresetParticipants)
+                .Include(p => p.PresetVisibilities)
+                .Where(p => p.UserId == userId)
+                .ToListAsync();
+
+            if (!presets.Any())
+            {
+                return false; // No presets to delete
+            }
+
+            // Delete related entities first
+            foreach (var preset in presets)
+            {
+                if (preset.PresetParticipants?.Any() == true)
+                {
+                    _dbContext.PresetParticipants.RemoveRange(preset.PresetParticipants);
+                }
+
+                if (preset.PresetVisibilities?.Any() == true)
+                {
+                    _dbContext.PresetVisibilities.RemoveRange(preset.PresetVisibilities);
+                }
+            }
+
+            // Delete all presets
+            _dbContext.Presets.RemoveRange(presets);
             await _dbContext.SaveChangesAsync();
 
             return true;
