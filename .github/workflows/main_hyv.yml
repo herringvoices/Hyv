@@ -25,7 +25,7 @@ jobs:
 
       # Build in the Hyv/api subdirectory
       - name: Build with dotnet
-        working-directory: Hyv/api
+        working-directory: api
         run: dotnet build --configuration Release
 
       # Publish to a local folder for deployment
