@@ -23,17 +23,22 @@ jobs:
         with:
           dotnet-version: '8.x'
 
+      # Build in the Hyv/api subdirectory
       - name: Build with dotnet
+        working-directory: Hyv/api
         run: dotnet build --configuration Release
 
+      # Publish to a local folder for deployment
       - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+        working-directory: Hyv/api
+        run: dotnet publish -c Release -o "${{ env.DOTNET_ROOT }}/myapp"
 
+      # Upload the published folder as an artifact named ".net-app"
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          path: ${{ env.DOTNET_ROOT }}/myapp
 
   deploy:
     runs-on: windows-latest
@@ -42,8 +47,8 @@ jobs:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write # This is required for requesting the JWT
+      contents: read  # This is required for actions/checkout
 
     steps:
       - name: Download artifact from build job
@@ -58,11 +63,11 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_D2C7DDBBD8B948B0A9EEE612616E46B4 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_D1A37D5F73564739BF24DA795239A257 }}
 
+      # Deploy the published folder named ".net-app" to the Web App
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'hyv'
           slot-name: 'Production'
-          package: .
-          
+          package: .net-app
