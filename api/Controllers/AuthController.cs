@@ -2,6 +2,8 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Hyv.DTOs;
 using Hyv.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hyv.Controllers
@@ -30,6 +32,7 @@ namespace Hyv.Controllers
             return Ok(result);
         }
 
+        [Authorize]
         [HttpGet("Me")]
         public async Task<IActionResult> GetCurrentUser()
         {
@@ -45,6 +48,17 @@ namespace Hyv.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
             var result = await _authService.RegisterAsync(registerDto);
+            if (!result.Success)
+            {
+                return BadRequest(result.Message);
+            }
+            return Ok(result);
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var result = await _authService.LogoutAsync();
             if (!result.Success)
             {
                 return BadRequest(result.Message);

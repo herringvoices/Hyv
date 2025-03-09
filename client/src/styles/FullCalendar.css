@@ -1,0 +1,293 @@
+/* --------------------------------------------------------- */
+/* 🗓️ GENERAL CALENDAR LAYOUT                               */
+/* --------------------------------------------------------- */
+
+.fc {
+  /* Root FullCalendar container */
+  @apply rounded-md border border-primary shadow-md shadow-primary/30 overflow-hidden;
+}
+
+.fc-theme-standard {
+  /* Default FullCalendar theme (for styling overrides) */
+}
+
+.fc-view {
+  /* A calendar view (month, week, day, etc.) */
+  @apply text-dark;
+}
+
+.fc-view-harness {
+  /* The container wrapping the view */
+  @apply overflow-hidden rounded-md;
+}
+
+.fc-scrollgrid {
+  /* The main grid container for events */
+}
+
+.fc-toolbar {
+  /* The toolbar (top navigation buttons & title) */
+  background-color: theme("colors.primary");
+  color: theme("colors.dark");
+  padding: 0.5rem;
+  border-radius: 4px 4px 0 0 !important;
+  /* Remove bottom margin to eliminate gap */
+  margin-bottom: 0 !important;
+}
+
+.fc-toolbar-title {
+  /* The title in the toolbar */
+  @apply text-dark font-bold;
+}
+
+.fc-button {
+  /* Generic styling for toolbar buttons */
+  @apply bg-dark/80 text-light transition-colors duration-200 !important;
+  border: 0 !important;
+}
+
+.fc-button:hover {
+  @apply bg-dark text-light !important;
+}
+
+.fc-button-active,
+.fc-button.fc-button-active {
+  @apply bg-dark text-light !important;
+}
+
+.fc-prev-button,
+.fc-next-button {
+  /* Buttons for navigating months/weeks */
+}
+
+.fc-today-button {
+  /* The "Today" button */
+}
+
+.fc-daygrid {
+  /* General class for day grid view */
+}
+
+/* Target scrollgrid and table borders for grid lines */
+.fc .fc-scrollgrid {
+  border: none !important; /* Remove outer border as we added it to .fc */
+}
+
+.fc .fc-scrollgrid-section > * {
+  border-color: theme("colors.primary") !important;
+}
+
+.fc .fc-scrollgrid-section-header > *,
+.fc .fc-scrollgrid-section-body > *,
+.fc .fc-scrollgrid-section-footer > * {
+  border-color: theme("colors.primary") !important;
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: theme("colors.primary") !important;
+}
+
+.fc-theme-standard .fc-scrollgrid {
+  /* Remove double borders */
+  border: none !important;
+}
+
+/* --------------------------------------------------------- */
+/* 📅 DATE SELECTION STYLES                                 */
+/* --------------------------------------------------------- */
+
+.fc .fc-highlight {
+  /* Background for date selection */
+  background-color: rgba(66, 135, 245, 0.15);
+  border-radius: 4px;
+}
+
+.fc-day:hover {
+  /* Hover effect for days */
+  background-color: rgba(66, 135, 245, 0.05);
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------- */
+/* 📅 MONTH / DAY GRID VIEW                                 */
+/* --------------------------------------------------------- */
+
+/* Style the container for the days of the week */
+.fc-col-header {
+  @apply bg-dark;
+  border-radius: 0 0 4px 4px !important;
+}
+
+/* Style individual day header cells */
+.fc-col-header-cell {
+  font-weight: bold;
+  @apply text-light;
+}
+
+.fc-daygrid-day {
+  @apply bg-dark/80;
+}
+.fc-daygrid-day:hover {
+  @apply bg-light/20;
+}
+
+.fc-day-today {
+  /* The current day cell (today's date) */
+  @apply bg-primary/20 !important;
+}
+
+.fc-daygrid-event {
+  /* Each event in the day grid view */
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 0.85em;
+}
+
+.fc-daygrid-event-dot {
+  display: none !important;
+}
+
+.fc-daygrid-day-number {
+  /* The number of the day in each cell */
+  @apply text-light;
+}
+
+.fc-daygrid-block-event {
+  /* Full-width events in the month view */
+}
+
+/* --------------------------------------------------------- */
+/* 📆 TIME GRID / WEEK & DAY VIEWS                          */
+/* --------------------------------------------------------- */
+
+.fc-timegrid {
+  /* The time grid container */
+}
+
+/* Alternative targeting for hour rows with alternating backgrounds */
+.fc .fc-timegrid-slots tr:nth-child(odd) td.fc-timegrid-slot {
+}
+
+.fc .fc-timegrid-slots tr:nth-child(even) td.fc-timegrid-slot {
+  @apply bg-light/10 !important;
+}
+
+.fc-timegrid-slot-label {
+  /* Time labels (e.g., 9AM, 10AM) */
+  @apply text-light;
+}
+
+.fc-timegrid-slot-lane {
+  /* The lane where events are placed */
+}
+
+.fc-timegrid-event {
+  /* Events in the time grid view */
+}
+
+.fc-timegrid-event-harness {
+  /* The wrapper around events in time grid view */
+}
+
+/* --------------------------------------------------------- */
+/* 📍 EVENTS & STYLING                                      */
+/* --------------------------------------------------------- */
+
+.fc-event {
+  /* Base class for all events */
+  border: none;
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  @apply text-dark;
+}
+
+.fc-event:hover {
+  /* Event hover effect */
+  transform: scale(1.02);
+  background-color: #eee;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.fc-event-title {
+  /* The title inside an event */
+  font-weight: 500;
+  @apply text-dark;
+}
+
+.fc-event-time {
+  /* The time label inside an event */
+  @apply text-dark;
+}
+
+.fc-event-main {
+  /* The main part of the event (excluding background) */
+}
+
+.fc-event-start {
+  /* Applied to the start of an event (multi-day events) */
+}
+
+.fc-event-end {
+  /* Applied to the end of an event (multi-day events) */
+}
+
+.fc-event-past {
+  /* Past events (automatically added by FullCalendar) */
+}
+
+.fc-event-resizable {
+  /* Applied to events that can be resized */
+}
+
+.fc-event-resizer {
+  /* The small resizer handle on events */
+}
+
+/* --------------------------------------------------------- */
+/* 🕒 TIME INDICATORS                                        */
+/* --------------------------------------------------------- */
+
+.fc-now-indicator {
+  /* The red line showing the current time */
+}
+
+.fc-timegrid-now-indicator-line {
+  /* The red line inside the time grid view */
+  border-top: dotted rgb(0, 255, 255) !important;
+  border-radius: 25%;
+}
+
+.fc-timegrid-now-indicator-arrow {
+  /* The small arrow at the side of the indicator */
+}
+
+/* --------------------------------------------------------- */
+/* 🎨 OTHER CUSTOMIZABLE ELEMENTS                           */
+/* --------------------------------------------------------- */
+
+.fc-highlight {
+  /* Background highlight for selecting events */
+}
+
+.fc-bg-event {
+  /* Background event styling */
+}
+
+.fc-non-business {
+  /* Non-business hours (greyed out) */
+}
+
+.fc-resource-timeline {
+  /* Timeline view container */
+}
+
+.fc-list-event {
+  /* Events in list view (when using listWeek, listMonth) */
+}
+
+.fc-list-table {
+  /* Table styling in list view */
+}

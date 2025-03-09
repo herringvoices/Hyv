@@ -1,5 +1,6 @@
 using System;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using AutoMapper;
 using DotNetEnv;
 using Hyv.DTOs;
 using Hyv.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -23,14 +25,16 @@ namespace Hyv.Services
 
         public AuthService(
             UserManager<User> userManager,
+            SignInManager<User> signInManager,
             IConfiguration configuration,
             IHttpContextAccessor httpContextAccessor,
             IMapper mapper
         )
         {
             _userManager = userManager;
-            _httpContextAccessor = httpContextAccessor;
+            _signInManager = signInManager;
             _configuration = configuration;
+            _httpContextAccessor = httpContextAccessor;
             _mapper = mapper;
             Env.Load(); // Load environment variables from .env file
         }
@@ -47,13 +51,9 @@ namespace Hyv.Services
                 };
             }
 
-            var result = await _signInManager.PasswordSignInAsync(
-                user,
-                loginDto.Password,
-                false,
-                false
-            );
-            if (!result.Succeeded)
+            // 1) Manually verify the password, instead of .PasswordSignInAsync()
+            var passwordValid = await _userManager.CheckPasswordAsync(user, loginDto.Password);
+            if (!passwordValid)
             {
                 return new AuthResultDto
                 {
@@ -62,34 +62,42 @@ namespace Hyv.Services
                 };
             }
 
-            // ✅ Generate JWT Token
+            // 2) Generate JWT
             var token = GenerateJwtToken(user);
 
-            // ✅ Store JWT in HttpOnly Cookie with `SameSite=Strict`
+            // 3) Set your JWT cookie
             var cookieOptions = new CookieOptions
             {
-                HttpOnly = true, // ✅ JavaScript cannot access this cookie
-                Secure = true, // ✅ Only send over HTTPS
-                SameSite = SameSiteMode.Strict, // ✅ Prevents CSRF by blocking cross-site requests
+                HttpOnly = true,
+                Secure = false, // Must be true when SameSite is None
+                SameSite = SameSiteMode.Lax, // Required for cross-origin requests
                 Expires = DateTime.UtcNow.AddDays(7),
             };
-
             _httpContextAccessor.HttpContext.Response.Cookies.Append("jwt", token, cookieOptions);
 
-            return new AuthResultDto { Success = true, Message = "Login successful." };
+            return new AuthResultDto
+            {
+                Success = true,
+                Message = "Login successful.",
+                User = _mapper.Map<UserDto>(user),
+            };
         }
 
         public async Task<AuthResultDto> GetCurrentUserAsync()
         {
-            var userId = _httpContextAccessor.HttpContext.User.FindFirstValue(
-                JwtRegisteredClaimNames.Sub
-            );
+            if (_httpContextAccessor.HttpContext == null)
+            {
+                return new AuthResultDto { Success = false, Message = "HttpContext is null." };
+            }
+
+            var userId = _httpContextAccessor.HttpContext.Items["UserId"] as string;
             if (string.IsNullOrEmpty(userId))
             {
                 return new AuthResultDto { Success = false, Message = "No user found." };
             }
 
             var user = await _userManager.FindByIdAsync(userId);
+
             if (user == null)
             {
                 return new AuthResultDto { Success = false, Message = "User not found." };
@@ -106,43 +114,70 @@ namespace Hyv.Services
 
         public async Task<AuthResultDto> RegisterAsync(RegisterDto registerDto)
         {
+            Console.WriteLine(
+                $"RegisterDto: UserName={registerDto.UserName}, Email={registerDto.Email}, FirstName={registerDto.FirstName}, LastName={registerDto.LastName}"
+            );
+            // Check if username is already taken
+            var existingUser = await _userManager.FindByNameAsync(registerDto.UserName);
+            if (existingUser != null)
+            {
+                return new AuthResultDto
+                {
+                    Success = false,
+                    Message = "Username is already taken.",
+                };
+            }
+
             var user = new User
             {
-                UserName = registerDto.Email,
+                UserName = registerDto.UserName,
                 Email = registerDto.Email,
                 FirstName = registerDto.FirstName,
                 LastName = registerDto.LastName,
             };
 
             var result = await _userManager.CreateAsync(user, registerDto.Password);
+
             if (!result.Succeeded)
             {
-                var errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
                 return new AuthResultDto
                 {
                     Success = false,
-                    Message = $"Registration failed: {errorMessage}",
+                    Message = string.Join(", ", result.Errors.Select(e => e.Description)),
                 };
             }
 
-            // ✅ Generate JWT Token
+            // Generate token and set cookie like in LoginAsync
             var token = GenerateJwtToken(user);
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTime.UtcNow.AddDays(7),
+            };
+            _httpContextAccessor.HttpContext.Response.Cookies.Append("jwt", token, cookieOptions);
 
             return new AuthResultDto
             {
                 Success = true,
-                Token = token,
-                Message = "Registration successful.",
+                Message = "Registration successful",
+                User = _mapper.Map<UserDto>(user),
             };
         }
 
         public async Task<AuthResultDto> LogoutAsync()
         {
+            if (_httpContextAccessor.HttpContext == null)
+            {
+                throw new InvalidOperationException("HttpContext is null.");
+            }
+
             var expiredCookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
                 Expires = DateTime.UtcNow.AddDays(-1),
             };
 
@@ -151,15 +186,14 @@ namespace Hyv.Services
                 "",
                 expiredCookieOptions
             );
-
             return new AuthResultDto { Success = true, Message = "Logged out successfully." };
         }
 
         private string GenerateJwtToken(User user)
         {
-            var jwtSecret = Env.GetString("JWT_SECRET"); // Get from .env
-            var key = Encoding.UTF8.GetBytes(jwtSecret);
+            var jwtSecret = Env.GetString("JWT_SECRET");
 
+            var key = Encoding.UTF8.GetBytes(jwtSecret);
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id),
@@ -179,7 +213,9 @@ namespace Hyv.Services
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
+            var tokenString = tokenHandler.WriteToken(token);
+
+            return tokenString;
         }
     }
 }

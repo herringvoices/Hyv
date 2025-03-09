@@ -8,7 +8,7 @@ namespace Hyv.Models
     {
         public int Id { get; set; }
 
-        [ForeignKey("HangoutId")] // can be omitted if using Fluent API
+        [ForeignKey("HangoutId")]
         public int HangoutId { get; set; }
 
         public string SenderId { get; set; }

@@ -23,6 +23,7 @@ namespace Hyv.Data
         public DbSet<HangoutRequest> HangoutRequests { get; set; }
         public DbSet<HangoutRequestRecipient> HangoutRequestRecipients { get; set; }
         public DbSet<HangoutGuest> HangoutGuests { get; set; }
+        public DbSet<WindowVisibility> WindowVisibilities { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -143,7 +144,7 @@ namespace Hyv.Data
             modelBuilder
                 .Entity<JoinRequest>()
                 .HasOne(jr => jr.User)
-                .WithMany()
+                .WithMany(u => u.JoinRequests) 
                 .HasForeignKey(jr => jr.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -166,7 +167,7 @@ namespace Hyv.Data
                 .Entity<HangoutRequest>()
                 .HasMany(hr => hr.Recipients)
                 .WithOne()
-                .HasForeignKey(hg => hg.HangoutId)
+                // Remove the incorrect foreign key specification
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Configure HangoutRequestRecipient relationships
@@ -180,7 +181,7 @@ namespace Hyv.Data
             modelBuilder
                 .Entity<HangoutRequestRecipient>()
                 .HasOne(hrr => hrr.User)
-                .WithMany()
+                .WithMany(u => u.HangoutRequestRecipients)
                 .HasForeignKey(hrr => hrr.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -188,15 +189,30 @@ namespace Hyv.Data
             modelBuilder
                 .Entity<HangoutGuest>()
                 .HasOne(hg => hg.Hangout)
-                .WithMany(h => h.HangoutGuests) 
+                .WithMany(h => h.HangoutGuests)
                 .HasForeignKey(hg => hg.HangoutId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder
                 .Entity<HangoutGuest>()
                 .HasOne(hg => hg.User)
-                .WithMany()
+                .WithMany(u => u.HangoutGuests)
                 .HasForeignKey(hg => hg.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure WindowVisibility relationships
+            modelBuilder
+                .Entity<WindowVisibility>()
+                .HasOne(wv => wv.Window)
+                .WithMany(w => w.WindowVisibilities)
+                .HasForeignKey(wv => wv.WindowId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder
+                .Entity<WindowVisibility>()
+                .HasOne(wv => wv.Category)
+                .WithMany()
+                .HasForeignKey(wv => wv.CategoryId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

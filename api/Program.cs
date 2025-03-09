@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 using AutoMapper;
 using DotNetEnv;
@@ -43,7 +45,12 @@ builder
 
 // ✅ Configure Authentication & JWT Bearer
 builder
-    .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
     .AddJwtBearer(options =>
     {
         options.RequireHttpsMetadata = false;
@@ -62,29 +69,107 @@ builder
         {
             OnMessageReceived = context =>
             {
-                if (
-                    context.Request.Cookies.ContainsKey("jwt")
-                    && string.IsNullOrEmpty(context.Token)
-                )
+                var token = context.Request.Cookies["jwt"];
+                Console.WriteLine("🔍 OnMessageReceived:");
+                Console.WriteLine($"Cookie token found: {!string.IsNullOrEmpty(token)}");
+                context.Token = token;
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                Console.WriteLine("✅ OnTokenValidated reached!");
+                var claimsIdentity = context.Principal?.Identity as ClaimsIdentity;
+                Console.WriteLine($"Claims Identity null? {claimsIdentity == null}");
+
+                if (claimsIdentity != null)
                 {
-                    context.Token = context.Request.Cookies["jwt"];
+                    Console.WriteLine("📝 Available Claims:");
+                    foreach (var claim in claimsIdentity.Claims)
+                    {
+                        Console.WriteLine($"- {claim.Type}: {claim.Value}");
+                    }
+
+                    // Change this line to use the correct claim type
+                    var userId = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    Console.WriteLine($"🆔 Found UserId: {userId}");
+
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        context.HttpContext.Items["UserId"] = userId;
+                        Console.WriteLine("✅ Set UserId in HttpContext.Items");
+                    }
                 }
                 return Task.CompletedTask;
             },
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine("❌ Authentication Failed:");
+                Console.WriteLine($"Error: {context.Exception}");
+                return Task.CompletedTask;
+            },
+            OnChallenge = async context =>
+            {
+                // Prevent default challenge response
+                context.HandleResponse();
+
+                // Write custom response
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new { message = "Unauthorized" });
+            },
         };
     });
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(
+        "AllowLocalDev",
+        policy =>
+        {
+            policy
+                .WithOrigins("http://localhost:5173")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+    );
+});
 
 builder.Services.AddAuthorization();
 
 // ✅ Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IFriendRequestService, FriendRequestService>();
+builder.Services.AddScoped<IFriendService, FriendService>();
+builder.Services.AddScoped<ITagalongService, TagalongService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IFriendshipCategoryService, FriendshipCategoryService>();
+builder.Services.AddScoped<ICategoryMemberService, CategoryMemberService>();
+builder.Services.AddScoped<IHangoutService, HangoutService>();
+builder.Services.AddScoped<IWindowService, WindowService>();
+builder.Services.AddScoped<IPresetService, PresetService>();
 
 // ✅ Register AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
+// ✅ Add Controllers with JSON serialization options
+builder
+    .Services.AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.ReferenceHandler = System
+            .Text
+            .Json
+            .Serialization
+            .ReferenceHandler
+            .IgnoreCycles;
+        opts.JsonSerializerOptions.MaxDepth = 32; // Reasonable depth limit
+    });
+
 // ✅ Add Swagger for API Documentation
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
@@ -103,8 +188,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("AllowLocalDev");
+
+// Add these in this specific order
 app.UseAuthentication();
-app.UseAuthorization();
+app.UseAuthorization(); // Remove the UseWhen wrapper
 app.MapControllers();
 
 app.Run();
