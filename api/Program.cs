@@ -141,7 +141,9 @@ builder.Services.AddCors(options =>
                 .WithOrigins(
                     "http://localhost:5173",
                     "http://localhost:4173",
-                    "https://hyv.azurewebsites.net"
+                    "https://hyv.azurewebsites.net",
+                    "https://www.hy-hyv.buzz",
+                    "https://hy-hyv.buzz"
                 )
                 .AllowAnyHeader()
                 .AllowAnyMethod()
