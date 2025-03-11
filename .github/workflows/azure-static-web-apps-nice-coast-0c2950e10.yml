@@ -40,13 +40,12 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_NICE_COAST_0C2950E10 }}
           action: "upload"
-          ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
-          # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           app_location: "./client" # App source code path
-          api_location: "" # Api source code path - optional
+          api_location: "" # API source code path (if any)
           output_location: "dist" # Changed from "build" to "dist"
+          config_file_location: "./client/dist/staticwebapp.config.json" # Ensures config is picked up
           github_id_token: ${{ steps.idtoken.outputs.result }}
-          ###### End of Repository/Build Configurations ######
+
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
