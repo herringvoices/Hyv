@@ -43,7 +43,7 @@ jobs:
           app_location: "./client" # App source code path
           api_location: "" # API source code path (if any)
           output_location: "dist" # Changed from "build" to "dist"
-          config_file_location: "./client/staticwebapp.config.json"
+          config_file_location: "./client"
 
           github_id_token: ${{ steps.idtoken.outputs.result }}
 
