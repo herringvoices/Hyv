@@ -43,7 +43,8 @@ jobs:
           app_location: "./client" # App source code path
           api_location: "" # API source code path (if any)
           output_location: "dist" # Changed from "build" to "dist"
-          config_file_location: "./client/dist/staticwebapp.config.json" # Ensures config is picked up
+          config_file_location: "./client/staticwebapp.config.json"
+
           github_id_token: ${{ steps.idtoken.outputs.result }}
 
   close_pull_request_job:
