@@ -1,4 +1,4 @@
-const API_BASE = "/api/Tagalong";
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/Tagalong`;
 
 export const sendTagalongRequest = async (recipientId) => {
   // Use the API_BASE variable for consistency

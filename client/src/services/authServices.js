@@ -1,5 +1,7 @@
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/Auth`;
+
 export async function loginUser(email, password) {
-  const response = await fetch("/api/Auth/login", {
+  const response = await fetch(`${API_BASE}/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -15,7 +17,7 @@ export async function loginUser(email, password) {
 }
 
 export async function registerUser(userData) {
-  const response = await fetch("/api/Auth/register", {
+  const response = await fetch(`${API_BASE}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(userData),
@@ -40,7 +42,7 @@ export async function registerUser(userData) {
 
 export async function getMe() {
   try {
-    const response = await fetch("/api/Auth/Me", {
+    const response = await fetch(`${API_BASE}/Me`, {
       method: "GET",
       credentials: "include",
     });
@@ -57,7 +59,7 @@ export async function getMe() {
 
 export async function logout() {
   try {
-    const response = await fetch("/api/Auth/logout", {
+    const response = await fetch(`${API_BASE}/logout`, {
       method: "POST",
       credentials: "include",
     });

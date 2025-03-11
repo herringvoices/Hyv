@@ -1,4 +1,4 @@
-const API_BASE = "/api/Friend";
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/Friend`;
 
 export async function getFriends(search) {
   const url = search ? `${API_BASE}?search=${search}` : API_BASE;

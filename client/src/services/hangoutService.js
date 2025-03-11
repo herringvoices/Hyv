@@ -1,4 +1,4 @@
-const apiUrl = "/api/hangout";
+const apiUrl = `${import.meta.env.VITE_API_URL || ''}/api/hangout`;
 
 /**
  * Fetch hangouts for a specific user with optional filtering

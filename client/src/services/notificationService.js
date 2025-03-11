@@ -1,4 +1,4 @@
-const API_BASE = "/api/Notification";
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/Notification`;
 
 export async function getPendingNotificationCounts() {
   const response = await fetch(`${API_BASE}/pending-counts`);

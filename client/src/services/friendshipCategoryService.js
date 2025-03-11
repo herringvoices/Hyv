@@ -1,4 +1,4 @@
-const API_BASE = "/api/FriendshipCategory";
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/FriendshipCategory`;
 
 /**
  * Fetches all friendship categories for the current user

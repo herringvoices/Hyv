@@ -1,4 +1,4 @@
-const API_BASE = "/api/FriendRequest";
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/FriendRequest`;
 
 export async function sendFriendRequest(recipientId) {
   const response = await fetch(API_BASE, {

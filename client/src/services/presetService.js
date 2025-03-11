@@ -1,4 +1,4 @@
-const apiUrl = "/api/preset";
+const apiUrl = `${import.meta.env.VITE_API_URL || ''}/api/preset`;
 
 /**
  * Create a new preset

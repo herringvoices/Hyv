@@ -1,4 +1,4 @@
-const apiUrl = "/api/window";
+const API_BASE = `${import.meta.env.VITE_API_URL || ""}/api/window`;
 
 /**
  * Fetches windows for the current user within a date range
