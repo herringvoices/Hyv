@@ -32,6 +32,7 @@ export const getUserHangouts = async (
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -58,6 +59,7 @@ export const getUserHangoutsInRange = async (start, end) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -84,6 +86,7 @@ export const getPendingHangoutRequests = async () => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -113,6 +116,7 @@ export const getSentPendingHangoutRequests = async (friendId) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -151,6 +155,7 @@ export const createHangoutRequest = async (requestData) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(requestData),
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -184,6 +189,7 @@ export const respondToHangoutRequest = async (requestId, response) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ response }),
+      credentials: "include",
     });
 
     if (!responseData.ok) {
@@ -217,6 +223,7 @@ export const acceptHangoutRequest = async (
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -247,6 +254,7 @@ export const rejectHangoutRequest = async (recipientId) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -277,6 +285,7 @@ export const leaveHangout = async (hangoutId) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -309,6 +318,7 @@ export const updateHangout = async (hangoutId, hangoutData) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(hangoutData),
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -338,6 +348,7 @@ export const getPastHangouts = async () => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -364,6 +375,7 @@ export const getUpcomingHangouts = async () => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -391,6 +403,7 @@ export const getPastHangoutsWithUser = async (targetUserId) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -420,6 +433,7 @@ export const getUpcomingHangoutsWithUser = async (targetUserId) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -449,6 +463,7 @@ export const deleteHangout = async (hangoutId) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -479,6 +494,7 @@ export const sendJoinRequest = async (hangoutId) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -513,6 +529,7 @@ export const acceptJoinRequest = async (
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -543,6 +560,7 @@ export const rejectJoinRequest = async (joinRequestId) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -572,6 +590,7 @@ export const getPendingJoinRequests = async () => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {

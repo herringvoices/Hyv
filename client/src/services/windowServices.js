@@ -7,11 +7,12 @@ const API_BASE = `${import.meta.env.VITE_API_URL || ""}/api/window`;
  * @returns {Promise<Array>} - Promise resolving to an array of window objects formatted for FullCalendar
  */
 export const getWindowsByDateRange = async (start, end) => {
-  const response = await fetch(`${apiUrl}?start=${start}&end=${end}`, {
+  const response = await fetch(`${API_BASE}?start=${start}&end=${end}`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -37,12 +38,13 @@ export const getWindowsByDateRange = async (start, end) => {
  * @throws {Error} - If window creation fails, including if it overlaps with existing windows
  */
 export const createWindow = async (windowData) => {
-  const response = await fetch(apiUrl, {
+  const response = await fetch(API_BASE, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(windowData),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -64,12 +66,13 @@ export const createWindow = async (windowData) => {
  * @throws {Error} - If window update fails or user is not authorized
  */
 export const updateWindow = async (id, windowData) => {
-  const response = await fetch(`${apiUrl}/${id}`, {
+  const response = await fetch(`${API_BASE}/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(windowData),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -86,11 +89,12 @@ export const updateWindow = async (id, windowData) => {
  * @throws {Error} - If deletion fails or user is not authorized
  */
 export const deleteWindow = async (id) => {
-  const response = await fetch(`${apiUrl}/${id}`, {
+  const response = await fetch(`${API_BASE}/${id}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -113,7 +117,7 @@ export const getHiveWindows = async (
   end = null,
   categoryId = null
 ) => {
-  let url = `${apiUrl}/hive`;
+  let url = `${API_BASE}/hive`;
 
   // Add query parameters if they exist
   const params = new URLSearchParams();
@@ -132,6 +136,7 @@ export const getHiveWindows = async (
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
   });
 
   if (!response.ok) {

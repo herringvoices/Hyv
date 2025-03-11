@@ -2,7 +2,9 @@ const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/user`;
 
 export const getUsersByUsername = async (query, options = {}) => {
   const params = new URLSearchParams({ query, ...options });
-  const response = await fetch(`${API_BASE}/search?${params.toString()}`);
+  const response = await fetch(`${API_BASE}/search?${params.toString()}`, {
+    credentials: "include"
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch users");
   }
@@ -10,7 +12,9 @@ export const getUsersByUsername = async (query, options = {}) => {
 };
 
 export const getUserById = async (userId) => {
-  const response = await fetch(`${API_BASE}/${userId}`);
+  const response = await fetch(`${API_BASE}/${userId}`, {
+    credentials: "include"
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch user");
   }
@@ -18,7 +22,9 @@ export const getUserById = async (userId) => {
 };
 
 export const getCurrentUser = async () => {
-  const response = await fetch(`${API_BASE}/current`);
+  const response = await fetch(`${API_BASE}/current`, {
+    credentials: "include"
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch current user");
   }
@@ -32,6 +38,7 @@ export const updateUserProfile = async (userData) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(userData),
+    credentials: "include"
   });
 
   if (!response.ok) {
@@ -44,7 +51,9 @@ export const getUsersByCategory = async (categoryId) => {
   // Ensure categoryId is parsed as a number
   const numericCategoryId = parseInt(categoryId, 10);
 
-  const response = await fetch(`${API_BASE}/category/${numericCategoryId}`);
+  const response = await fetch(`${API_BASE}/category/${numericCategoryId}`, {
+    credentials: "include"
+  });
   if (!response.ok) {
     const errorText = await response.text();
     console.error("Error response:", errorText);

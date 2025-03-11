@@ -13,6 +13,7 @@ export async function addUserToCategory(categoryId, friendId) {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
     }
   );
   if (!response.ok) {
@@ -34,6 +35,7 @@ export async function removeUserFromCategory(categoryId, friendId) {
     `${API_BASE}?categoryId=${categoryId}&friendId=${friendId}`,
     {
       method: "DELETE",
+      credentials: "include",
     }
   );
   if (!response.ok) {
@@ -50,7 +52,9 @@ export async function removeUserFromCategory(categoryId, friendId) {
  * @throws {Error} - If the request fails
  */
 export async function getCategoryMembers(categoryId) {
-  const response = await fetch(`${API_BASE}/members?categoryId=${categoryId}`);
+  const response = await fetch(`${API_BASE}/members?categoryId=${categoryId}`, {
+    credentials: "include",
+  });
   if (!response.ok) {
     const error = await response.text();
     throw new Error(error);

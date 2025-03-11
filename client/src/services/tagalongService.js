@@ -7,6 +7,7 @@ export const sendTagalongRequest = async (recipientId) => {
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
     body: JSON.stringify({ recipientId }),
   });
 
@@ -23,7 +24,9 @@ export async function getPendingTagalongs(userIsSender) {
   if (userIsSender !== undefined) {
     url += `?userIsSender=${userIsSender}`;
   }
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    credentials: "include"
+  });
   if (!response.ok) {
     const error = await response.text();
     throw new Error(error);
@@ -34,6 +37,7 @@ export async function getPendingTagalongs(userIsSender) {
 export async function deleteAllTagalongRequests() {
   const response = await fetch(`${API_BASE}/all`, {
     method: "DELETE",
+    credentials: "include"
   });
   if (!response.ok) {
     const error = await response.text();
@@ -47,6 +51,7 @@ export async function respondToTagalongRequest(requestId, accepted) {
     `${API_BASE}/${requestId}/respond?accepted=${accepted}`,
     {
       method: "POST",
+      credentials: "include"
     }
   );
   if (!response.ok) {
@@ -60,6 +65,7 @@ export const removeTagalong = async (tagalongId) => {
   // Make sure we're using the same API_BASE url as other functions
   const response = await fetch(`${API_BASE}/${tagalongId}`, {
     method: "DELETE",
+    credentials: "include"
   });
 
   if (!response.ok) {
@@ -71,7 +77,9 @@ export const removeTagalong = async (tagalongId) => {
 };
 
 export async function checkTagalongExists(userId) {
-  const response = await fetch(`${API_BASE}/exists?userId=${userId}`);
+  const response = await fetch(`${API_BASE}/exists?userId=${userId}`, {
+    credentials: "include"
+  });
   if (!response.ok) {
     const errorText = await response.text();
     console.error("Error checking tagalong status:", errorText);
@@ -84,7 +92,9 @@ export async function checkTagalongExists(userId) {
 export async function getAcceptedTagalongs() {
   try {
     console.log("Fetching accepted tagalongs from:", `${API_BASE}/accepted`);
-    const response = await fetch(`${API_BASE}/accepted`);
+    const response = await fetch(`${API_BASE}/accepted`, {
+      credentials: "include"
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
