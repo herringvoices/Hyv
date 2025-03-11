@@ -2,7 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using AutoMapper;
-using DotNetEnv;
+using DotNetEnv; // Only used for local dev loading of .env
 using Hyv.Data;
 using Hyv.Models;
 using Hyv.Services;
@@ -14,36 +14,46 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ Load .env file (only in development)
+// Only load .env if we're in Development mode
+// (In Azure/Production, we'll rely on environment variables via builder.Configuration)
 if (builder.Environment.IsDevelopment())
 {
     Env.Load();
 }
 
-// ✅ Load Configuration (supports .env + system environment variables)
+// Build Configuration to pick up environment variables
 var configuration = builder.Configuration.AddEnvironmentVariables().Build();
 
-// ✅ Build Connection String from Environment Variables
+// Build Postgres connection string from environment variables
 var connectionString =
     $"Host={configuration["POSTGRES_HOST"]};"
     + $"Database={configuration["POSTGRES_DB"]};"
     + $"Username={configuration["POSTGRES_USER"]};"
     + $"Password={configuration["POSTGRES_PASSWORD"]};"
-    + $"SSL Mode={configuration["POSTGRES_SSL_MODE"]}";
+    + $"SSL Mode={configuration["POSTGRES_SSL_MODE"]};";
 
-// ✅ Retrieve JWT Secret from Environment Variables
-var jwtSecret = Env.GetString("JWT_SECRET");
+// IMPORTANT: Read JWT secret from configuration
+// (this will pick up the variable from Azure App Settings in Production)
+var jwtSecret = configuration["JWT_SECRET"];
 
-// ✅ Add Database Context
+// Optional: Throw an error if JWT_SECRET is not set
+if (string.IsNullOrWhiteSpace(jwtSecret))
+{
+    throw new InvalidOperationException(
+        "JWT_SECRET is not set. Make sure you configure it in Azure (App Settings) or in your local .env file."
+    );
+}
+
+// --- Add DbContext ---
 builder.Services.AddDbContext<HyvDbContext>(options => options.UseNpgsql(connectionString));
 
-// ✅ Configure Identity
+// --- Configure Identity ---
 builder
     .Services.AddIdentity<User, IdentityRole>()
     .AddEntityFrameworkStores<HyvDbContext>()
     .AddDefaultTokenProviders();
 
-// ✅ Configure Authentication & JWT Bearer
+// --- Configure Authentication & JWT Bearer ---
 builder
     .Services.AddAuthentication(options =>
     {
@@ -64,7 +74,7 @@ builder
             ClockSkew = TimeSpan.Zero,
         };
 
-        // ✅ Read token from HttpOnly cookie if Authorization header is missing
+        // Optional: read token from HttpOnly cookie if header is missing
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -89,7 +99,7 @@ builder
                         Console.WriteLine($"- {claim.Type}: {claim.Value}");
                     }
 
-                    // Change this line to use the correct claim type
+                    // Typically, the name identifier is the user’s ID in Identity
                     var userId = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                     Console.WriteLine($"🆔 Found UserId: {userId}");
 
@@ -109,7 +119,7 @@ builder
             },
             OnChallenge = async context =>
             {
-                // Prevent default challenge response
+                // Prevent the default challenge response
                 context.HandleResponse();
 
                 // Write custom response
@@ -119,6 +129,8 @@ builder
             },
         };
     });
+
+// --- CORS policy ---
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
@@ -136,7 +148,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddAuthorization();
 
-// ✅ Register Services
+// --- Register Services ---
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendRequestService, FriendRequestService>();
@@ -149,10 +161,10 @@ builder.Services.AddScoped<IHangoutService, HangoutService>();
 builder.Services.AddScoped<IWindowService, WindowService>();
 builder.Services.AddScoped<IPresetService, PresetService>();
 
-// ✅ Register AutoMapper
+// --- AutoMapper ---
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// ✅ Add Controllers with JSON serialization options
+// --- Controllers (with JSON options) ---
 builder
     .Services.AddControllers()
     .AddJsonOptions(opts =>
@@ -166,21 +178,21 @@ builder
         opts.JsonSerializerOptions.MaxDepth = 32; // Reasonable depth limit
     });
 
-// ✅ Add Swagger for API Documentation
+// --- Swagger ---
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
-// ✅ Ensure Migrations are Applied Automatically
+// Automatically apply migrations on startup
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<HyvDbContext>();
-    dbContext.Database.Migrate(); // Applies pending migrations on startup
+    dbContext.Database.Migrate();
 }
 
-// ✅ Configure Middleware
+// Configure middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -190,9 +202,9 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("AllowLocalDev");
 
-// Add these in this specific order
 app.UseAuthentication();
-app.UseAuthorization(); // Remove the UseWhen wrapper
+app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
