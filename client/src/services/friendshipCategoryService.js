@@ -1,4 +1,4 @@
-const API_BASE = "/api/FriendshipCategory";
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/FriendshipCategory`;
 
 /**
  * Fetches all friendship categories for the current user
@@ -6,7 +6,7 @@ const API_BASE = "/api/FriendshipCategory";
  * @throws {Error} - If the request fails
  */
 export async function getAllCategories() {
-  const response = await fetch(API_BASE);
+  const response = await fetch(API_BASE, { credentials: "include" });
   if (!response.ok) {
     const error = await response.text();
     throw new Error(error);
@@ -21,7 +21,7 @@ export async function getAllCategories() {
  * @throws {Error} - If the category doesn't exist or user is not authorized
  */
 export async function getCategoryById(id) {
-  const response = await fetch(`${API_BASE}/${id}`);
+  const response = await fetch(`${API_BASE}/${id}`, { credentials: "include" });
   if (!response.ok) {
     const error = await response.text();
     throw new Error(error);
@@ -40,6 +40,7 @@ export async function createCategory(name) {
   const response = await fetch(`${API_BASE}?name=${encodedName}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
   });
   if (!response.ok) {
     const error = await response.text();
@@ -60,6 +61,7 @@ export async function updateCategory(id, name) {
   const response = await fetch(`${API_BASE}/${id}?name=${encodedName}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
   });
   if (!response.ok) {
     const error = await response.text();
@@ -77,6 +79,7 @@ export async function updateCategory(id, name) {
 export async function deleteCategory(id) {
   const response = await fetch(`${API_BASE}/${id}`, {
     method: "DELETE",
+    credentials: "include",
   });
   if (!response.ok) {
     const error = await response.text();

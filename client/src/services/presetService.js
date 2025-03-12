@@ -1,4 +1,4 @@
-const apiUrl = "/api/preset";
+const apiUrl = `${import.meta.env.VITE_API_URL || ''}/api/preset`;
 
 /**
  * Create a new preset
@@ -20,6 +20,7 @@ export const createPreset = async (presetData) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
       body: JSON.stringify(presetData),
     });
 
@@ -46,6 +47,7 @@ export const getUserPresets = async () => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -71,6 +73,7 @@ export const getPresetById = async (presetId) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -97,6 +100,7 @@ export const updatePreset = async (presetId, presetData) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
       body: JSON.stringify(presetData),
     });
 
@@ -124,6 +128,7 @@ export const deletePreset = async (presetId) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -151,6 +156,7 @@ export const applyPreset = async (presetId, targetDate) => {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
       body: JSON.stringify({ targetDate: targetDate.toISOString() }),
     });
 

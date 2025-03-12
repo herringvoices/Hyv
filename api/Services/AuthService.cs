@@ -69,8 +69,8 @@ namespace Hyv.Services
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false, // Must be true when SameSite is None
-                SameSite = SameSiteMode.Lax, // Required for cross-origin requests
+                Secure = true, // Must be true for cross-origin with SameSite=None
+                SameSite = SameSiteMode.None, // Required for cross-origin requests
                 Expires = DateTime.UtcNow.AddDays(7),
             };
             _httpContextAccessor.HttpContext.Response.Cookies.Append("jwt", token, cookieOptions);
@@ -152,8 +152,8 @@ namespace Hyv.Services
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax,
+                Secure = true, // Must be true for cross-origin with SameSite=None
+                SameSite = SameSiteMode.None, // Required for cross-origin requests
                 Expires = DateTime.UtcNow.AddDays(7),
             };
             _httpContextAccessor.HttpContext.Response.Cookies.Append("jwt", token, cookieOptions);
@@ -176,8 +176,8 @@ namespace Hyv.Services
             var expiredCookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false,
-                SameSite = SameSiteMode.Lax,
+                Secure = true,
+                SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(-1),
             };
 

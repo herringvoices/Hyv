@@ -1,10 +1,11 @@
-const API_BASE = "/api/FriendRequest";
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/FriendRequest`;
 
 export async function sendFriendRequest(recipientId) {
   const response = await fetch(API_BASE, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ recipientId }),
+    credentials: "include",
   });
   if (!response.ok) {
     const error = await response.text();
@@ -18,7 +19,7 @@ export async function getPendingFriendRequests(userIsSender) {
   if (userIsSender !== undefined) {
     url += `?userIsSender=${userIsSender}`;
   }
-  const response = await fetch(url);
+  const response = await fetch(url, { credentials: "include" });
   if (!response.ok) {
     const error = await response.text();
     throw new Error(error);
@@ -31,6 +32,7 @@ export async function respondToFriendRequest(requestId, accepted) {
     `${API_BASE}/${requestId}/respond?accepted=${accepted}`,
     {
       method: "POST",
+      credentials: "include",
     }
   );
   if (!response.ok) {
