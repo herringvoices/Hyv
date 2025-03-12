@@ -88,11 +88,7 @@ const NavBar = () => {
       )}
 
       {/* Profile and Logout */}
-      <div className="flex items-center gap-4">
-        <Link to="/logout" className="hover:text-secondary">
-          Logout
-        </Link>
-
+      <div className="flex items-center">
         {/* LoggedInUser Profile Dropdown */}
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
@@ -123,6 +119,14 @@ const NavBar = () => {
                 className="block px-3 py-2 hover:bg-primary hover:text-dark rounded-md"
               >
                 Profile
+              </Link>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item asChild>
+              <Link
+                to="/logout"
+                className="block px-3 py-2 hover:bg-primary hover:text-dark rounded-md"
+              >
+                Logout
               </Link>
             </DropdownMenu.Item>
           </DropdownMenu.Content>
