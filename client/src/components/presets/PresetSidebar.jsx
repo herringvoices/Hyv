@@ -6,25 +6,6 @@ import { Draggable } from "@fullcalendar/interaction";
 import PresetFormModal from "./PresetFormModal";
 import DeletePresetModal from "./DeletePresetModal";
 
-// Add this style tag
-const styles = document.createElement("style");
-styles.innerHTML = `
-  .preset-drag-mirror {
-    background-color: #64748b;
-    border: 1px solid #475569;
-    border-radius: 0.375rem;
-    padding: 0.75rem;
-    color: white;
-    opacity: 0.8;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    pointer-events: none;
-    z-index: 9999;
-    width: 200px;
-    font-family: sans-serif;
-  }
-`;
-document.head.appendChild(styles);
-
 const PresetSidebar = ({ onPresetApplied }) => {
   const [presets, setPresets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,11 +50,25 @@ const PresetSidebar = ({ onPresetApplied }) => {
     // Create new draggable instance with enhanced mirror styling
     draggableRef.current = new Draggable(presetContainerRef.current, {
       itemSelector: ".preset-item",
-      mirrorSelector: ".fc-event-mirror", // Target mirror elements with this class
+      mirrorClass: "preset-drag-mirror",
       appendTo: document.body,
+      // Add these properties
+      autoScroll: true,
+      delay: 50, // Small delay to ensure proper initialization
       eventData: (eventEl) => {
         const presetId = Number(eventEl.dataset.presetId);
         const preset = presets.find((p) => p.id === presetId);
+
+        // Calculate duration in milliseconds
+        const presetStart = new Date(preset?.start);
+        const presetEnd = new Date(preset?.end);
+        const durationMs = presetEnd - presetStart;
+
+        // Get the time parts from the preset
+        const startHours = presetStart.getHours();
+        const startMinutes = presetStart.getMinutes();
+        const endHours = presetEnd.getHours();
+        const endMinutes = presetEnd.getMinutes();
 
         return {
           id: `preset-${presetId}`,
@@ -82,6 +77,14 @@ const PresetSidebar = ({ onPresetApplied }) => {
           presetId: presetId,
           backgroundColor: "#64748b",
           borderColor: "#475569",
+          // Add duration info for visual feedback
+          duration: { milliseconds: durationMs },
+          // Store time info to use when dropped
+          startTime: `${startHours}:${startMinutes}`,
+          endTime: `${endHours}:${endMinutes}`,
+          extendedProps: {
+            presetId: presetId,
+          },
         };
       },
     });
@@ -168,44 +171,8 @@ const PresetSidebar = ({ onPresetApplied }) => {
             presets.map((preset) => (
               <div
                 key={preset.id}
-                draggable="true"
                 className="preset-item cursor-grab bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-md p-3 relative"
                 data-preset-id={preset.id}
-                onDragStart={(e) => {
-                  // Set drag data
-                  e.dataTransfer.setData("text/plain", preset.id);
-
-                  // Create a custom drag image
-                  const dragImage = document.createElement("div");
-                  dragImage.innerHTML = `
-                    <div style="
-                      background-color: #64748b;
-                      border: 1px solid #475569;
-                      border-radius: 0.375rem;
-                      padding: 0.75rem;
-                      color: white;
-                      width: 200px;
-                      font-family: sans-serif;
-                    ">
-                      <div style="font-weight: bold;">${preset.title}</div>
-                    </div>
-                  `;
-                  document.body.appendChild(dragImage);
-
-                  // Set the drag image
-                  try {
-                    e.dataTransfer.setDragImage(dragImage, 10, 10);
-                  } catch (err) {
-                    console.error("Error setting drag image:", err);
-                  }
-
-                  // Clean up after a short delay
-                  setTimeout(() => {
-                    document.body.removeChild(dragImage);
-                  }, 0);
-
-                  console.log("Drag started for preset:", preset.id);
-                }}
               >
                 <div className="text-light font-medium">{preset.title}</div>
                 <div className="text-gray-400 text-sm">
