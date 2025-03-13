@@ -143,8 +143,10 @@ public class MappingProfile : Profile
         CreateMap<WindowParticipant, WindowParticipantDto>()
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
             .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User));
+
         CreateMap<WindowParticipantDto, WindowParticipant>()
-            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId));
+            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
+            .ForMember(dest => dest.Window, opt => opt.Ignore()); // Make sure this is present
 
         // ================================
         // 5. WindowVisibility <-> WindowVisibilityDto
@@ -153,7 +155,6 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))
             .ForMember(dest => dest.WindowId, opt => opt.MapFrom(src => src.WindowId))
             .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category));
-        // Don't map Window property to avoid circular references
 
         CreateMap<WindowVisibilityDto, WindowVisibility>()
             .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))

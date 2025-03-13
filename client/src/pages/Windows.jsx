@@ -96,15 +96,8 @@ export default function Windows() {
       if (info.event.extendedProps?.presetId) {
         const presetId = info.event.extendedProps.presetId;
 
-        // Get the drop date (year, month, day only)
-        const dropDate = new Date(
-          info.event.start.getFullYear(),
-          info.event.start.getMonth(),
-          info.event.start.getDate(),
-          0,
-          0,
-          0
-        );
+        // Use the actual dropped event start time instead of zeroing it out
+        const dropDate = new Date(info.event.start);
 
         setError(null);
 
@@ -400,6 +393,25 @@ export default function Windows() {
                     listDayFormat: { weekday: "short" },
                     listDaySideFormat: { month: "short", day: "numeric" },
                   },
+                }}
+                // Add custom event class names function to modify mirror appearance
+                eventClassNames={(arg) => {
+                  // Check if this is a mirror element
+                  if (arg.isMirror) {
+                    // If it's a preset being dragged, use preset-drag-mirror class
+                    if (arg.event.extendedProps?.presetId) {
+                      return ["preset-drag-mirror"];
+                    }
+                    // Otherwise use default mirror styling
+                    return ["custom-mirror-event"];
+                  }
+
+                  // Check if this is a hangout event
+                  if (arg.event.extendedProps.eventType === "hangout") {
+                    return ["hangout-event"];
+                  }
+
+                  return [];
                 }}
               />
             </div>

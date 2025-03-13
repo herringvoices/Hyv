@@ -42,10 +42,14 @@ public class WindowDto
 
     // Computed properties for FullCalendar styling
     // Assign Tailwind classes
-    public string ClassName =>
-        ExtendedProps?.HangoutId.HasValue == true
-            ? "bg-secondary text-light"
-            : "bg-primary text-dark";
+    public string BackgroundColor =>
+        ExtendedProps?.HangoutId.HasValue == false ? "#F2CA5077" : "#12dbd8";
+    public string TextColor => ExtendedProps?.HangoutId.HasValue == false ? "#e4ebeb" : "#232424";
+
+    // public string ClassName =>
+    //     ExtendedProps?.HangoutId.HasValue == true
+    //         ? "bg-secondary text-light"
+    //         : "bg-primary text-dark";
 
     // All additional properties must be inside ExtendedProps
     public WindowExtendedPropsDto ExtendedProps { get; set; }

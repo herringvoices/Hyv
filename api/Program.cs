@@ -15,7 +15,6 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 
 // Only load .env if we're in Development mode
-// (In Azure/Production, we'll rely on environment variables via builder.Configuration)
 if (builder.Environment.IsDevelopment())
 {
     Env.Load();
@@ -24,19 +23,34 @@ if (builder.Environment.IsDevelopment())
 // Build Configuration to pick up environment variables
 var configuration = builder.Configuration.AddEnvironmentVariables().Build();
 
-// Build Postgres connection string from environment variables
-var connectionString =
-    $"Host={configuration["POSTGRES_HOST"]};"
-    + $"Database={configuration["POSTGRES_DB"]};"
-    + $"Username={configuration["POSTGRES_USER"]};"
-    + $"Password={configuration["POSTGRES_PASSWORD"]};"
-    + $"SSL Mode={configuration["POSTGRES_SSL_MODE"]};";
+// Build Postgres connection string based on environment
+string connectionString;
+if (builder.Environment.IsDevelopment())
+{
+    // Use DEV_ prefixed variables in development
+    connectionString =
+        $"Host={configuration["DEV_POSTGRES_HOST"]};"
+        + $"Database={configuration["DEV_POSTGRES_DB"]};"
+        + $"Username={configuration["DEV_POSTGRES_USER"]};"
+        + $"Password={configuration["DEV_POSTGRES_PASSWORD"]};"
+        + $"SSL Mode={configuration["DEV_POSTGRES_SSL_MODE"]};";
+}
+else
+{
+    // Use non-prefixed variables in production
+    connectionString =
+        $"Host={configuration["POSTGRES_HOST"]};"
+        + $"Database={configuration["POSTGRES_DB"]};"
+        + $"Username={configuration["POSTGRES_USER"]};"
+        + $"Password={configuration["POSTGRES_PASSWORD"]};"
+        + $"SSL Mode={configuration["POSTGRES_SSL_MODE"]};";
+}
 
 // IMPORTANT: Read JWT secret from configuration
 // (this will pick up the variable from Azure App Settings in Production)
 var jwtSecret = configuration["JWT_SECRET"];
 
-// Optional: Throw an error if JWT_SECRET is not set
+//Throw an error if JWT_SECRET is not set
 if (string.IsNullOrWhiteSpace(jwtSecret))
 {
     throw new InvalidOperationException(
