@@ -307,6 +307,7 @@ namespace Hyv.Services
                         w.WindowParticipants.Any(p => p.UserId == userId)
                         && w.Start >= start.Value
                         && w.End <= end.Value
+                        
                     )
                     .ToListAsync();
 
