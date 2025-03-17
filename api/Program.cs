@@ -177,6 +177,7 @@ builder.Services.AddCors(options =>
                     "http://localhost:5173",
                     "http://localhost:4173",
                     "https://hyv.azurewebsites.net",
+                    "https://hyv-ffevachygravg5ge.centralus-01.azurewebsites.net",
                     "https://www.hy-hyv.buzz",
                     "https://hy-hyv.buzz"
                 )
