@@ -302,9 +302,10 @@ namespace Hyv.Services
             if (user == null)
                 return null;
 
-            // Only update name fields
+            // Update fields if provided
             user.FirstName = userUpdateDto.FirstName ?? user.FirstName;
             user.LastName = userUpdateDto.LastName ?? user.LastName;
+            user.ProfilePicture = userUpdateDto.ProfilePicture ?? user.ProfilePicture;
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)

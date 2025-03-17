@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using AutoMapper;
+using CloudinaryDotNet;
 using DotNetEnv; // Only used for local dev loading of .env
 using Hyv.Data;
 using Hyv.Models;
@@ -14,7 +15,6 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Only load .env if we're in Development mode
 if (builder.Environment.IsDevelopment())
 {
     Env.Load();
@@ -57,6 +57,27 @@ if (string.IsNullOrWhiteSpace(jwtSecret))
         "JWT_SECRET is not set. Make sure you configure it in Azure (App Settings) or in your local .env file."
     );
 }
+
+// Read Cloudinary settings
+var cloudName = configuration["CLOUDINARY_CLOUDNAME"];
+var apiKey = configuration["CLOUDINARY_APIKEY"];
+var apiSecret = configuration["CLOUDINARY_APISECRET"];
+
+if (
+    string.IsNullOrWhiteSpace(cloudName)
+    || string.IsNullOrWhiteSpace(apiKey)
+    || string.IsNullOrWhiteSpace(apiSecret)
+)
+{
+    throw new InvalidOperationException(
+        "Cloudinary configuration is missing. Please check your environment variables."
+    );
+}
+
+// Configure Cloudinary
+var cloudinaryAccount = new Account(cloudName, apiKey, apiSecret);
+var cloudinary = new Cloudinary(cloudinaryAccount);
+builder.Services.AddSingleton(cloudinary);
 
 // --- Add DbContext ---
 builder.Services.AddDbContext<HyvDbContext>(options => options.UseNpgsql(connectionString));
@@ -180,6 +201,7 @@ builder.Services.AddScoped<ICategoryMemberService, CategoryMemberService>();
 builder.Services.AddScoped<IHangoutService, HangoutService>();
 builder.Services.AddScoped<IWindowService, WindowService>();
 builder.Services.AddScoped<IPresetService, PresetService>();
+builder.Services.AddScoped<IPhotoService, PhotoService>();
 
 // --- AutoMapper ---
 builder.Services.AddAutoMapper(typeof(MappingProfile));

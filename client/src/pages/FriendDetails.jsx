@@ -268,109 +268,131 @@ function FriendDetails() {
 
           {/* Upcoming Hangouts Accordion Item */}
           <Accordion.Item
+            className="bg-dark/70 border w-full rounded-md border-primary mt-3 md:mt-5 shadow-md shadow-primary"
             value="upcoming-hangouts"
-            className="border border-primary rounded-lg overflow-hidden mb-4"
           >
-            <Accordion.Trigger
-              className="w-full flex items-center justify-between p-4 bg-dark/80 text-primary"
-              onClick={() => handleAccordionValueChange("upcoming-hangouts")}
-            >
-              <h3 className="text-xl font-medium">Upcoming Hangouts</h3>
+            <Accordion.Trigger className="w-full flex items-center justify-between px-3 md:px-4">
+              <h3 className="text-2xl md:text-4xl my-2 md:my-3 text-primary">
+                Upcoming Hangouts
+              </h3>
               <motion.div
                 animate={openItem === "upcoming-hangouts" ? "open" : "closed"}
                 variants={chevronVariants}
+                transition={{ duration: 0.3 }}
               >
-                <FontAwesomeIcon icon="fa-solid fa-chevron-down" />
+                <FontAwesomeIcon
+                  icon="fa-solid fa-circle-chevron-down"
+                  className="text-primary text-xl md:text-2xl"
+                />
               </motion.div>
             </Accordion.Trigger>
-            <Accordion.Content>
-              <motion.div
-                variants={contentVariants}
-                initial="hidden"
-                animate={
-                  openItem === "upcoming-hangouts" ? "visible" : "hidden"
-                }
-                className="bg-dark/50 p-4"
-              >
-                {loadingUpcoming ? (
-                  <div className="flex justify-center p-4">
-                    <Spinner />
-                  </div>
-                ) : upcomingError ? (
-                  <div className="text-red-400 p-2">{upcomingError}</div>
-                ) : upcomingHangouts.length === 0 ? (
-                  <div className="text-light p-2">
-                    No upcoming hangouts with {friend.fullName}
-                  </div>
-                ) : (
-                  <ul>
-                    {upcomingHangouts.map((hangout) => (
-                      <motion.li
-                        key={hangout.id}
-                        variants={contentChildrenVariants}
-                        className="mb-2"
-                      >
-                        <SharedUpcomingHangoutItem
-                          hangout={hangout}
-                          onActionComplete={handleActionComplete}
-                        />
-                      </motion.li>
-                    ))}
-                  </ul>
-                )}
-              </motion.div>
-            </Accordion.Content>
+            <AnimatePresence initial={false}>
+              {openItem === "upcoming-hangouts" && (
+                <motion.div
+                  key="upcoming-content"
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  variants={contentVariants}
+                  className="overflow-hidden"
+                >
+                  <motion.div
+                    className="px-2 py-4"
+                    variants={contentChildrenVariants}
+                  >
+                    {loadingUpcoming ? (
+                      <div className="flex justify-center items-center">
+                        <Spinner size="sm" />
+                      </div>
+                    ) : upcomingError ? (
+                      <div className="text-red-400">{upcomingError}</div>
+                    ) : upcomingHangouts.length === 0 ? (
+                      <p className="text-light">
+                        No upcoming hangouts with {friend.fullName}.
+                      </p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {upcomingHangouts.map((hangout) => (
+                          <motion.li
+                            key={hangout.id}
+                            variants={contentChildrenVariants}
+                            className="mb-2"
+                          >
+                            <SharedUpcomingHangoutItem
+                              hangout={hangout}
+                              onActionComplete={handleActionComplete}
+                            />
+                          </motion.li>
+                        ))}
+                      </ul>
+                    )}
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Accordion.Item>
 
           {/* Past Hangouts Accordion Item */}
           <Accordion.Item
+            className="bg-dark/70 border w-full rounded-md border-primary mt-3 md:mt-5 shadow-md shadow-primary"
             value="past-hangouts"
-            className="border border-primary rounded-lg overflow-hidden mb-4"
           >
-            <Accordion.Trigger
-              className="w-full flex items-center justify-between p-4 bg-dark/80 text-primary"
-              onClick={() => handleAccordionValueChange("past-hangouts")}
-            >
-              <h3 className="text-xl font-medium">Past Hangouts</h3>
+            <Accordion.Trigger className="w-full flex items-center justify-between px-3 md:px-4">
+              <h3 className="text-2xl md:text-4xl my-2 md:my-3 text-primary">
+                Past Hangouts
+              </h3>
               <motion.div
                 animate={openItem === "past-hangouts" ? "open" : "closed"}
                 variants={chevronVariants}
+                transition={{ duration: 0.3 }}
               >
-                <FontAwesomeIcon icon="fa-solid fa-chevron-down" />
+                <FontAwesomeIcon
+                  icon="fa-solid fa-circle-chevron-down"
+                  className="text-primary text-xl md:text-2xl"
+                />
               </motion.div>
             </Accordion.Trigger>
-            <Accordion.Content>
-              <motion.div
-                variants={contentVariants}
-                initial="hidden"
-                animate={openItem === "past-hangouts" ? "visible" : "hidden"}
-                className="bg-dark/50 p-4"
-              >
-                {loadingPast ? (
-                  <div className="flex justify-center p-4">
-                    <Spinner />
-                  </div>
-                ) : pastError ? (
-                  <div className="text-red-400 p-2">{pastError}</div>
-                ) : pastHangouts.length === 0 ? (
-                  <div className="text-light p-2">
-                    No past hangouts with {friend.fullName}
-                  </div>
-                ) : (
-                  <ul>
-                    {pastHangouts.map((hangout) => (
-                      <motion.li
-                        key={hangout.id}
-                        variants={contentChildrenVariants}
-                        className="mb-2"
-                      >
-                        <SharedPastHangoutItem hangout={hangout} />
-                      </motion.li>
-                    ))}
-                  </ul>
-                )}
-              </motion.div>
-            </Accordion.Content>
+            <AnimatePresence initial={false}>
+              {openItem === "past-hangouts" && (
+                <motion.div
+                  key="past-content"
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  variants={contentVariants}
+                  className="overflow-hidden"
+                >
+                  <motion.div
+                    className="px-2 py-4"
+                    variants={contentChildrenVariants}
+                  >
+                    {loadingPast ? (
+                      <div className="flex justify-center items-center">
+                        <Spinner size="sm" />
+                      </div>
+                    ) : pastError ? (
+                      <div className="text-red-400">{pastError}</div>
+                    ) : pastHangouts.length === 0 ? (
+                      <p className="text-light">
+                        No past hangouts with {friend.fullName}.
+                      </p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {pastHangouts.map((hangout) => (
+                          <motion.li
+                            key={hangout.id}
+                            variants={contentChildrenVariants}
+                            className="mb-2"
+                          >
+                            <SharedPastHangoutItem hangout={hangout} />
+                          </motion.li>
+                        ))}
+                      </ul>
+                    )}
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Accordion.Item>
         </Accordion.Root>
       </div>

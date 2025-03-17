@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Hyv.DTOs;
 using Hyv.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hyv.Controllers
@@ -131,6 +132,39 @@ namespace Hyv.Controllers
                 return NotFound(new { message = "User not found" });
 
             return Ok(updatedUser);
+        }
+
+        [HttpPost("upload-profile-picture")]
+        public async Task<IActionResult> UploadProfilePicture(IFormFile file)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new { message = "User not authenticated" });
+            }
+
+            try
+            {
+                if (file == null || file.Length == 0)
+                    return BadRequest(new { message = "No file uploaded" });
+
+                // Use PhotoService to upload to Cloudinary
+                var photoService = HttpContext.RequestServices.GetRequiredService<IPhotoService>();
+                var photoUrl = await photoService.UploadPhotoAsync(file);
+
+                // Update user with new photo URL
+                var userUpdateDto = new UserUpdateDto { Id = userId, ProfilePicture = photoUrl };
+
+                var updatedUser = await _userService.UpdateUserAsync(userUpdateDto);
+                if (updatedUser == null)
+                    return NotFound(new { message = "User not found" });
+
+                return Ok(new { photoUrl });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

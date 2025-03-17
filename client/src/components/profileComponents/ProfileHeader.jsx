@@ -1,11 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { updateUserProfile } from "../../services/userServices";
+import {
+  updateUserProfile,
+  uploadProfilePicture,
+} from "../../services/userServices";
 
 function ProfileHeader({ user, onUpdateUser }) {
   const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState(user.firstName || "");
   const [lastName, setLastName] = useState(user.lastName || "");
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  // Create a reference to the hidden file input
+  const fileInputRef = useRef(null);
 
   const handleSave = async () => {
     try {
@@ -23,19 +31,81 @@ function ProfileHeader({ user, onUpdateUser }) {
     }
   };
 
+  // Handler for when the user clicks on the profile picture or the upload icon
+  const handleProfilePictureClick = () => {
+    fileInputRef.current.click();
+  };
+
+  // Handler for when a file is selected
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Reset error state
+    setUploadError(null);
+
+    try {
+      setIsUploading(true);
+      const result = await uploadProfilePicture(file);
+
+      // Update the UI with the new photo URL
+      if (onUpdateUser) {
+        onUpdateUser();
+      }
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+      setUploadError(error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="w-full flex flex-col">
-      {user.profilePicture ? (
-        <img
-          src={user.profilePicture}
-          alt={`${user.fullName}'s profile`}
-          className="w-1/2 md:w-1/3 rounded-full mx-auto mt-4 md:mt-8"
-        />
-      ) : (
-        <FontAwesomeIcon
-          className="mx-auto text-dark mt-4 md:mt-8 size-32 md:size-56"
-          icon="fa-solid fa-user"
-        />
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        className="hidden"
+      />
+
+      {/* Profile picture section with upload capability */}
+      <div
+        className="relative w-fit mx-auto cursor-pointer"
+        onClick={handleProfilePictureClick}
+      >
+        {isUploading ? (
+          <div className="w-1/2 md:w-1/3 rounded-full mx-auto mt-4 md:mt-8 flex items-center justify-center">
+            <FontAwesomeIcon
+              icon="fa-solid fa-spinner"
+              spin
+              className="text-dark size-32 md:size-56"
+            />
+          </div>
+        ) : user.profilePicture ? (
+          <img
+            src={user.profilePicture}
+            alt={`${user.fullName}'s profile`}
+            className="w-1/2 md:w-1/3 rounded-full mx-auto mt-4 md:mt-8"
+          />
+        ) : (
+          <FontAwesomeIcon
+            className="mx-auto text-dark mt-4 md:mt-8 size-32 md:size-56"
+            icon="fa-solid fa-user"
+          />
+        )}
+
+        {/* Camera icon overlay for upload */}
+        <div className="absolute bottom-0 right-0 bg-dark text-light rounded-full p-2">
+          <FontAwesomeIcon icon="fa-solid fa-camera" />
+        </div>
+      </div>
+
+      {/* Display upload error if any */}
+      {uploadError && (
+        <div className="text-red-500 text-center mt-2">{uploadError}</div>
       )}
 
       {isEditing ? (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Accordion } from "radix-ui";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   getPendingHangoutRequests,
@@ -32,6 +32,41 @@ function HangoutsTab() {
   const chevronVariants = {
     open: { rotate: 180 },
     closed: { rotate: 0 },
+  };
+
+  // Content animation variants
+  const contentVariants = {
+    hidden: {
+      opacity: 0,
+      height: 0,
+      overflow: "hidden",
+      transition: {
+        duration: 0.2,
+        ease: "easeInOut",
+        when: "afterChildren",
+      },
+    },
+    visible: {
+      opacity: 1,
+      height: "auto",
+      overflow: "hidden",
+      transition: {
+        duration: 0.3,
+        ease: "easeOut",
+        when: "beforeChildren",
+        staggerChildren: 0.05,
+      },
+    },
+  };
+
+  // Animation for the content inside
+  const contentChildrenVariants = {
+    hidden: { opacity: 0, y: -10 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.2 },
+    },
   };
 
   const fetchPendingHangouts = async () => {
@@ -155,55 +190,81 @@ function HangoutsTab() {
               />
             </motion.div>
           </Accordion.Trigger>
-          <Accordion.Content className="px-2 py-2">
-            {/* Hangout Requests Section */}
-            <h4 className="text-lg font-semibold mb-2 text-primary">
-              Hangout Invitations
-            </h4>
-            {isLoadingPending ? (
-              <div className="flex justify-center p-4">
-                <Spinner />
-              </div>
-            ) : pendingHangouts.length === 0 ? (
-              <p className="text-light p-2 mb-4">
-                No pending hangout invitations
-              </p>
-            ) : (
-              <ul className="space-y-2 mb-4">
-                {pendingHangouts.map((request) => (
-                  <PendingHangoutItem
-                    key={request.id}
-                    request={request}
-                    refreshRequests={fetchPendingHangouts}
-                  />
-                ))}
-              </ul>
-            )}
+          <AnimatePresence initial={false}>
+            {openItem === "pending-requests" && (
+              <motion.div
+                key="pending-content"
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+                variants={contentVariants}
+                className="overflow-hidden"
+              >
+                <motion.div
+                  className="px-2 py-4"
+                  variants={contentChildrenVariants}
+                >
+                  {/* Hangout Requests Section */}
+                  <h4 className="text-lg font-semibold mb-2 text-primary">
+                    Hangout Invitations
+                  </h4>
+                  {isLoadingPending ? (
+                    <div className="flex justify-center items-center">
+                      <Spinner size="sm" />
+                    </div>
+                  ) : pendingHangouts.length === 0 ? (
+                    <p className="text-light mb-4">
+                      No pending hangout invitations
+                    </p>
+                  ) : (
+                    <ul className="space-y-2 mb-4">
+                      {pendingHangouts.map((request) => (
+                        <motion.li
+                          key={request.id}
+                          variants={contentChildrenVariants}
+                          className="mb-2"
+                        >
+                          <PendingHangoutItem
+                            request={request}
+                            refreshRequests={fetchPendingHangouts}
+                          />
+                        </motion.li>
+                      ))}
+                    </ul>
+                  )}
 
-            {/* Join Requests Section */}
-            <h4 className="text-lg font-semibold mb-2 text-primary">
-              Join Requests
-            </h4>
-            {isLoadingJoinRequests ? (
-              <div className="flex justify-center p-4">
-                <Spinner />
-              </div>
-            ) : joinRequestsError ? (
-              <p className="text-red-400 p-2">{joinRequestsError}</p>
-            ) : pendingJoinRequests.length === 0 ? (
-              <p className="text-light p-2">No pending join requests</p>
-            ) : (
-              <ul className="space-y-2">
-                {pendingJoinRequests.map((request) => (
-                  <PendingJoinRequestItem
-                    key={request.id}
-                    request={request}
-                    refreshRequests={fetchPendingJoinRequests}
-                  />
-                ))}
-              </ul>
+                  {/* Join Requests Section */}
+                  <h4 className="text-lg font-semibold mb-2 text-primary">
+                    Join Requests
+                  </h4>
+                  {isLoadingJoinRequests ? (
+                    <div className="flex justify-center items-center">
+                      <Spinner size="sm" />
+                    </div>
+                  ) : joinRequestsError ? (
+                    <div className="text-red-400">{joinRequestsError}</div>
+                  ) : pendingJoinRequests.length === 0 ? (
+                    <p className="text-light">No pending join requests</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {pendingJoinRequests.map((request) => (
+                        <motion.li
+                          key={request.id}
+                          variants={contentChildrenVariants}
+                          className="mb-2"
+                        >
+                          <PendingJoinRequestItem
+                            request={request}
+                            refreshRequests={fetchPendingJoinRequests}
+                          />
+                        </motion.li>
+                      ))}
+                    </ul>
+                  )}
+                </motion.div>
+              </motion.div>
             )}
-          </Accordion.Content>
+          </AnimatePresence>
         </Accordion.Item>
 
         <Accordion.Item
@@ -230,27 +291,48 @@ function HangoutsTab() {
               />
             </motion.div>
           </Accordion.Trigger>
-          <Accordion.Content className="px-2 py-2">
-            {isLoadingUpcoming ? (
-              <div className="flex justify-center p-4">
-                <Spinner />
-              </div>
-            ) : upcomingError ? (
-              <p className="text-red-400 p-2">{upcomingError}</p>
-            ) : upcomingHangouts.length === 0 ? (
-              <p className="text-light p-2">No upcoming hangouts</p>
-            ) : (
-              <ul className="space-y-2">
-                {upcomingHangouts.map((hangout) => (
-                  <SharedUpcomingHangoutItem
-                    key={hangout.id}
-                    hangout={hangout}
-                    onActionComplete={handleActionComplete}
-                  />
-                ))}
-              </ul>
+          <AnimatePresence initial={false}>
+            {openItem === "upcoming-hangouts" && (
+              <motion.div
+                key="upcoming-content"
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+                variants={contentVariants}
+                className="overflow-hidden"
+              >
+                <motion.div
+                  className="px-2 py-4"
+                  variants={contentChildrenVariants}
+                >
+                  {isLoadingUpcoming ? (
+                    <div className="flex justify-center items-center">
+                      <Spinner size="sm" />
+                    </div>
+                  ) : upcomingError ? (
+                    <div className="text-red-400">{upcomingError}</div>
+                  ) : upcomingHangouts.length === 0 ? (
+                    <p className="text-light">No upcoming hangouts</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {upcomingHangouts.map((hangout) => (
+                        <motion.li
+                          key={hangout.id}
+                          variants={contentChildrenVariants}
+                          className="mb-2"
+                        >
+                          <SharedUpcomingHangoutItem
+                            hangout={hangout}
+                            onActionComplete={handleActionComplete}
+                          />
+                        </motion.li>
+                      ))}
+                    </ul>
+                  )}
+                </motion.div>
+              </motion.div>
             )}
-          </Accordion.Content>
+          </AnimatePresence>
         </Accordion.Item>
 
         <Accordion.Item
@@ -272,23 +354,45 @@ function HangoutsTab() {
               />
             </motion.div>
           </Accordion.Trigger>
-          <Accordion.Content className="px-2 py-2">
-            {isLoadingPast ? (
-              <div className="flex justify-center p-4">
-                <Spinner />
-              </div>
-            ) : pastError ? (
-              <p className="text-red-400 p-2">{pastError}</p>
-            ) : pastHangouts.length === 0 ? (
-              <p className="text-light p-2">No past hangouts</p>
-            ) : (
-              <ul className="space-y-2">
-                {pastHangouts.map((hangout) => (
-                  <SharedPastHangoutItem key={hangout.id} hangout={hangout} />
-                ))}
-              </ul>
+          <AnimatePresence initial={false}>
+            {openItem === "past-hangouts" && (
+              <motion.div
+                key="past-content"
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+                variants={contentVariants}
+                className="overflow-hidden"
+              >
+                <motion.div
+                  className="px-2 py-4"
+                  variants={contentChildrenVariants}
+                >
+                  {isLoadingPast ? (
+                    <div className="flex justify-center items-center">
+                      <Spinner size="sm" />
+                    </div>
+                  ) : pastError ? (
+                    <div className="text-red-400">{pastError}</div>
+                  ) : pastHangouts.length === 0 ? (
+                    <p className="text-light">No past hangouts</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {pastHangouts.map((hangout) => (
+                        <motion.li
+                          key={hangout.id}
+                          variants={contentChildrenVariants}
+                          className="mb-2"
+                        >
+                          <SharedPastHangoutItem hangout={hangout} />
+                        </motion.li>
+                      ))}
+                    </ul>
+                  )}
+                </motion.div>
+              </motion.div>
             )}
-          </Accordion.Content>
+          </AnimatePresence>
         </Accordion.Item>
       </Accordion.Root>
     </div>
