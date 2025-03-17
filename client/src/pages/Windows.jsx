@@ -95,36 +95,20 @@ export default function Windows() {
       // Check if this is a dragged preset (has presetId in extendedProps)
       if (info.event.extendedProps?.presetId) {
         const presetId = info.event.extendedProps.presetId;
+
+        // Use the actual dropped event start time instead of zeroing it out
         const dropDate = new Date(info.event.start);
+
         setError(null);
 
         // Apply the preset at the drop date
-        const createdWindow = await applyPreset(presetId, dropDate);
+        await applyPreset(presetId, dropDate);
 
         // Remove the temporary event
         info.revert();
 
-        // Force a refresh with the window ID to ensure proper creation
-        if (createdWindow && createdWindow.id) {
-          // Create a forced update request for the same window to ensure relationships are properly saved
-          try {
-            await updateWindow(createdWindow.id, {
-              title: createdWindow.title,
-              start: createdWindow.start,
-              end: createdWindow.end,
-              extendedProps: createdWindow.extendedProps,
-            });
-
-            // Now refresh the calendar
-            setTimeout(() => {
-              refreshCalendarData();
-            }, 100);
-          } catch (updateErr) {
-            console.error("Error finalizing window creation:", updateErr);
-          }
-        } else {
-          refreshCalendarData();
-        }
+        // Refresh the calendar data
+        refreshCalendarData();
       }
     } catch (err) {
       console.error("Error applying preset:", err);
