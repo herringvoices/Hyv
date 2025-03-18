@@ -13,31 +13,50 @@ export default function HiveHelpModal({ isOpen, onClose }) {
           </Dialog.Title>
 
           <div className="space-y-4 text-light">
-            <h3 className="font-semibold text-lg text-primary">Hyv View: See When Your Friends Are Free</h3>
+            <h3 className="font-semibold text-lg text-primary">
+              Hyv View: See When Your Friends Are Free
+            </h3>
             <p>
-              The Hyv View makes it easy to see when your availability aligns with your friends.
+              The Hyv View makes it easy to see when your availability aligns
+              with your friends.
             </p>
-            
+
             <ul className="list-disc pl-5 space-y-2">
               <li>
-                <span className="font-medium text-primary">Overlapping Windows:</span> If a friend has an open window that overlaps with yours, it will appear on this page. These windows are semi-opaque, letting you know they're free.
+                <span className="font-medium text-primary">
+                  Overlapping Windows:
+                </span>{" "}
+                If a friend has an open window that overlaps with yours, it will
+                appear on this page. These windows are semi-opaque, letting you
+                know they're free.
               </li>
-              
+
               <li>
-                <span className="font-medium text-primary">Send a Hangout Request:</span> Click on a friend's open window to propose a hangout. You'll be able to set the details—like time, location, and activity—before sending the request.
+                <span className="font-medium text-primary">
+                  Send a Hangout Request:
+                </span>{" "}
+                Click on a friend's open window to propose a hangout. You'll be
+                able to set the details—like time, location, and activity—before
+                sending the request.
               </li>
-              
+
               <li>
-                <span className="font-medium text-primary">Open Hangouts:</span> If your friends are already part of a planned hangout and have made it open to others, it will show up as a solid orange block.
+                <span className="font-medium text-primary">Open Hangouts:</span>{" "}
+                If your friends are already part of a planned hangout and have
+                made it open to others, it will show up as a solid orange block.
               </li>
-              
+
               <li>
-                <span className="font-medium text-primary">Join a Hangout:</span> Click on an open hangout to send a request to join in.
+                <span className="font-medium text-primary">
+                  Join a Hangout:
+                </span>{" "}
+                Click on an open hangout to send a request to join in.
               </li>
             </ul>
 
             <p className="mt-4">
-              With the Hyv View, planning time with friends is effortless—you'll always know when they're available and how to join in on the fun!
+              With the Hyv View, planning time with friends is effortless—you'll
+              always know when they're available and how to join in on the fun!
             </p>
           </div>
 

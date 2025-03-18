@@ -13,27 +13,38 @@ export default function WindowHelpModal({ isOpen, onClose }) {
           </Dialog.Title>
 
           <div className="space-y-4 text-light">
-            <h3 className="font-semibold text-lg text-primary">Managing Your Availability with Windows</h3>
+            <h3 className="font-semibold text-lg text-primary">
+              Managing Your Availability with Windows
+            </h3>
             <p>
-              Easily share when you're available to hang out by adding Windows to your schedule.
+              Easily share when you're available to hang out by adding Windows
+              to your schedule.
             </p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Transparent Windows show when you're open to plans.</li>
               <li>Opaque Windows indicate confirmed hangouts.</li>
             </ul>
 
-            <h3 className="font-semibold text-lg text-primary mt-4">Editing and Customizing Windows</h3>
+            <h3 className="font-semibold text-lg text-primary mt-4">
+              Editing and Customizing Windows
+            </h3>
             <ul className="list-disc pl-5 space-y-1">
               <li>Drag and drop to adjust the date and time effortlessly.</li>
               <li>Create and apply presets to simplify the process.</li>
               <li>Have a regular Weekday Availability?</li>
               <li>Need a Game Night preset?</li>
-              <li>Set them up once, then drag them onto your calendar in seconds!</li>
+              <li>
+                Set them up once, then drag them onto your calendar in seconds!
+              </li>
             </ul>
 
-            <h3 className="font-semibold text-lg text-primary mt-4">Effortless Scheduling</h3>
+            <h3 className="font-semibold text-lg text-primary mt-4">
+              Effortless Scheduling
+            </h3>
             <p>
-              Once you've placed a preset, it behaves just like any other Window—you can edit or move it as needed. Stay flexible while making planning easier than ever!
+              Once you've placed a preset, it behaves just like any other
+              Window—you can edit or move it as needed. Stay flexible while
+              making planning easier than ever!
             </p>
           </div>
 

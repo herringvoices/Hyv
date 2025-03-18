@@ -456,6 +456,18 @@ export default function HangoutRequestModal({ isOpen, onClose, windowInfo }) {
               </div>
             </div>
 
+            {/* Preferred Activity Section */}
+            {windowInfo?.extendedProps?.preferredActivity && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-light mb-1">
+                  Suggested Activity
+                </label>
+                <div className="border border-primary rounded p-3 bg-dark/50 text-light">
+                  {windowInfo.extendedProps.preferredActivity}
+                </div>
+              </div>
+            )}
+
             {/* Form Buttons */}
             <div className="flex justify-end gap-2 mt-6">
               <button
