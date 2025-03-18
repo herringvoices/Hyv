@@ -1,5 +1,8 @@
 import { createContext, useState, useCallback, useEffect } from "react";
-import { getPendingNotificationCounts } from "../services/notificationService";
+import {
+  getPendingNotificationCounts,
+  getHangoutNotificationCounts,
+} from "../services/notificationService";
 
 export const UserContext = createContext();
 
@@ -10,12 +13,22 @@ export const UserProvider = ({ children }) => {
     tagalongRequestCount: 0,
     total: 0,
   });
+  const [hangoutNotifications, setHangoutNotifications] = useState({
+    hangoutRequestCount: 0,
+    joinRequestCount: 0,
+    total: 0,
+  });
 
   const refreshNotifications = useCallback(async () => {
     try {
       if (loggedInUser) {
-        const notificationCounts = await getPendingNotificationCounts();
-        setRelationshipNotifications(notificationCounts);
+        // Fetch relationship notifications
+        const relationshipCounts = await getPendingNotificationCounts();
+        setRelationshipNotifications(relationshipCounts);
+
+        // Fetch hangout notifications
+        const hangoutCounts = await getHangoutNotificationCounts();
+        setHangoutNotifications(hangoutCounts);
       }
     } catch (error) {
       console.error("Failed to fetch notification counts:", error);
@@ -36,6 +49,8 @@ export const UserProvider = ({ children }) => {
         setLoggedInUser,
         relationshipNotifications,
         setRelationshipNotifications,
+        hangoutNotifications,
+        setHangoutNotifications,
         refreshNotifications,
       }}
     >
