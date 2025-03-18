@@ -12,6 +12,10 @@ import interactionPlugin from "@fullcalendar/interaction";
 // Import Radix components correctly based on your package.json
 import { Select, Toast } from "radix-ui";
 import { getAllCategories } from "../services/friendshipCategoryService";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+// Import the help modal component
+import HiveHelpModal from "../components/hive/HiveHelpModal";
 
 export default function Hive() {
   const [windows, setWindows] = useState([]);
@@ -35,6 +39,19 @@ export default function Hive() {
   // Toast state
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+
+  // Add state for help modal
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+
+  // Add handler for help icon click
+  const handleHelpIconClick = () => {
+    setIsHelpModalOpen(true);
+  };
+
+  // Add handler for help modal close
+  const handleHelpModalClose = () => {
+    setIsHelpModalOpen(false);
+  };
 
   // Fetch categories on component mount
   useEffect(() => {
@@ -171,7 +188,15 @@ export default function Hive() {
   return (
     <div className="mx-auto px-2 sm:px-5 mt-2 sm:mt-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl sm:text-2xl">Hive View</h2>
+        <h2 className="text-xl sm:text-2xl text-center mx-auto">
+          Hyv View
+          <FontAwesomeIcon
+            className="hover:text-primary hover:cursor-pointer ms-2"
+            icon="fa-solid fa-circle-info"
+            size="sm"
+            onClick={handleHelpIconClick}
+          />
+        </h2>
 
         {/* Category filter dropdown using proper Radix structure */}
         <div className="ml-auto">
@@ -216,7 +241,7 @@ export default function Hive() {
       </div>
 
       {error && (
-        <div className="alert alert-danger" role="alert">
+        <div className="p-3 mb-3 bg-red-900/20 border border-red-500 text-red-400 rounded-md">
           {error}
         </div>
       )}
@@ -282,10 +307,8 @@ export default function Hive() {
       </div>
 
       {loading && (
-        <div className="d-flex justify-content-center mt-4">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
+        <div className="flex justify-center mt-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-primary"></div>
         </div>
       )}
 
@@ -306,6 +329,9 @@ export default function Hive() {
           windowInfo={selectedWindow}
         />
       )}
+
+      {/* Hive Help Modal */}
+      <HiveHelpModal isOpen={isHelpModalOpen} onClose={handleHelpModalClose} />
 
       {/* Toast Notification */}
       <Toast.Provider>
