@@ -21,5 +21,12 @@ namespace Hyv.Controllers
             var counts = await _notificationService.GetPendingCountsAsync();
             return Ok(counts);
         }
+
+        [HttpGet("pending-hangout-counts")]
+        public async Task<IActionResult> GetPendingHangoutCounts()
+        {
+            var counts = await _notificationService.GetHangoutNotificationCountsAsync();
+            return Ok(counts);
+        }
     }
 }

@@ -8,7 +8,8 @@ import { UserContext } from "./context/UserContext";
 
 const NavBar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { loggedInUser, relationshipNotifications } = useContext(UserContext);
+  const { loggedInUser, relationshipNotifications, hangoutNotifications } =
+    useContext(UserContext);
 
   // Navigation items with notification badges
   const navItems = [
@@ -22,7 +23,12 @@ const NavBar = () => {
           ? relationshipNotifications.total
           : null,
     },
-    { name: "Hangouts", path: "/hangouts" },
+    {
+      name: "Hangouts",
+      path: "/hangouts",
+      badge:
+        hangoutNotifications?.total > 0 ? hangoutNotifications.total : null,
+    },
   ];
 
   return (
