@@ -368,5 +368,11 @@ public class MappingProfile : Profile
         CreateMap<PresetVisibilityDto, PresetVisibility>()
             .ForMember(dest => dest.Preset, opt => opt.Ignore())
             .ForMember(dest => dest.FriendshipCategory, opt => opt.Ignore());
+
+        // ================================
+        // 14. Notification DTOs
+        // ================================
+        CreateMap<RelationshipNotificationCountDto, RelationshipNotificationCountDto>();
+        CreateMap<HangoutNotificationCountDto, HangoutNotificationCountDto>();
     }
 }
