@@ -5,6 +5,7 @@ import {
 } from "../services/windowServices";
 import { getUserHangoutsInRange } from "../services/hangoutService";
 import { applyPreset } from "../services/presetService";
+import { Tooltip } from "radix-ui";
 
 // Import the FullCalendar packages correctly
 import FullCalendar from "@fullcalendar/react";
@@ -16,6 +17,19 @@ import interactionPlugin from "@fullcalendar/interaction";
 import WindowFormModal from "../components/windows/WindowFormModal";
 import HangoutFormModal from "../components/hangouts/HangoutFormModal";
 import PresetSidebar from "../components/presets/PresetSidebar";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+// Import calendar handlers
+import {
+  handleDatesSet,
+  handleDateClick,
+  handleDateSelect,
+} from "../handlers/windowCalendar/dateHandlers";
+import { handleEventReceive } from "../handlers/windowCalendar/eventHandlers";
+import { refreshCalendarData as refreshCalendarDataUtil } from "../handlers/windowCalendar/utilHandlers";
+
+// Add import for the help modal
+import WindowHelpModal from "../components/windows/WindowHelpModal";
 
 export default function Windows() {
   const [windows, setWindows] = useState([]);
@@ -32,6 +46,9 @@ export default function Windows() {
   // Hangout modal state
   const [isHangoutModalOpen, setIsHangoutModalOpen] = useState(false);
   const [selectedHangout, setSelectedHangout] = useState(null);
+
+  // Add state for help modal
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
   // Add a ref to access the calendar API
   const calendarRef = useRef(null);
@@ -52,135 +69,40 @@ export default function Windows() {
     return () => window.removeEventListener("resize", checkIsMobile);
   }, []);
 
-  // Handle date range change in FullCalendar
-  const handleDatesSet = async (dateInfo) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Update the current view type
-      setCurrentView(dateInfo.view.type);
-
-      const startStr = dateInfo.startStr;
-      const endStr = dateInfo.endStr;
-
-      // Fetch both windows and hangouts in parallel
-      const [fetchedWindows, fetchedHangouts] = await Promise.all([
-        getWindowsByDateRange(startStr, endStr),
-        getUserHangoutsInRange(new Date(startStr), new Date(endStr)),
-      ]);
-
-      setWindows(fetchedWindows);
-      setHangouts(fetchedHangouts);
-
-      // Set scroll time if in week or day view
-      if (
-        dateInfo.view.type === "timeGridWeek" ||
-        dateInfo.view.type === "timeGridDay"
-      ) {
-        const currentHour = new Date().getHours();
-        dateInfo.view.calendar.setOption("scrollTime", currentHour + ":00:00");
-      }
-    } catch (err) {
-      console.error("Error fetching calendar data:", err);
-      setError("Failed to load calendar data. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle receiving of dragged preset events
-  const handleEventReceive = async (info) => {
-    try {
-      // Check if this is a dragged preset (has presetId in extendedProps)
-      if (info.event.extendedProps?.presetId) {
-        const presetId = info.event.extendedProps.presetId;
-
-        // Use the actual dropped event start time instead of zeroing it out
-        const dropDate = new Date(info.event.start);
-
-        setError(null);
-
-        // Apply the preset at the drop date
-        await applyPreset(presetId, dropDate);
-
-        // Remove the temporary event
-        info.revert();
-
-        // Refresh the calendar data
-        refreshCalendarData();
-      }
-    } catch (err) {
-      console.error("Error applying preset:", err);
-      setError("Failed to apply preset. Please try again.");
-      info.revert();
-    }
-  };
-
-  // Function to refresh calendar data
+  // Function to refresh calendar data - wrapper for the utility
   const refreshCalendarData = () => {
-    if (calendarRef.current) {
-      const calendarApi = calendarRef.current.getApi();
-      const view = calendarApi.view;
-
-      // Get date range from current view
-      const start = view.activeStart.toISOString();
-      const end = view.activeEnd.toISOString();
-
-      // Re-fetch both windows and hangouts
-      Promise.all([
-        getWindowsByDateRange(start, end),
-        getUserHangoutsInRange(new Date(start), new Date(end)),
-      ])
-        .then(([fetchedWindows, fetchedHangouts]) => {
-          setWindows(fetchedWindows);
-          setHangouts(fetchedHangouts);
-        })
-        .catch((err) => {
-          console.error("Error refreshing calendar data:", err);
-        });
-    }
+    return refreshCalendarDataUtil(calendarRef, { setWindows, setHangouts });
   };
 
-  // Existing event handlers (dateClick, dateSelect, etc.)
-  const handleDateClick = (dateClickInfo) => {
-    // Only process clicks in month view
-    if (currentView !== "dayGridMonth") return;
-
-    // Get the clicked date
-    const clickedDate = new Date(dateClickInfo.date);
-
-    // Set default times (2:00 PM to 3:00 PM)
-    const startDate = new Date(clickedDate);
-    startDate.setHours(14, 0, 0); // 2:00 PM
-
-    const endDate = new Date(clickedDate);
-    endDate.setHours(15, 0, 0); // 3:00 PM
-
-    // Create a dateInfo object similar to what select would provide
-    const dateInfo = {
-      start: startDate,
-      end: endDate,
-      startStr: startDate.toISOString(),
-      endStr: endDate.toISOString(),
-      allDay: false,
-      view: dateClickInfo.view,
-      jsEvent: dateClickInfo.jsEvent,
-    };
-
-    // Open modal with this info
-    setSelectedDateInfo(dateInfo);
-    setIsModalOpen(true);
+  // Handle date range change in FullCalendar - wrapper for the handler
+  const handleDatesSetWrapper = (dateInfo) => {
+    return handleDatesSet(dateInfo, {
+      setLoading,
+      setError,
+      setCurrentView,
+      setWindows,
+      setHangouts,
+    });
   };
 
-  const handleDateSelect = (selectInfo) => {
-    // Only process selections in timeGrid views
-    if (!currentView.includes("timeGrid")) return;
+  // Handle receiving of dragged preset events - wrapper for the handler
+  const handleEventReceiveWrapper = (info) => {
+    return handleEventReceive(info, setError, refreshCalendarData);
+  };
 
-    setSelectedDateInfo(selectInfo);
-    setIsModalOpen(true);
-    // Clear the selection to allow reselection of the same date range
-    selectInfo.view.calendar.unselect();
+  // Existing event handlers (dateClick, dateSelect, etc.) - wrappers for the handlers
+  const handleDateClickWrapper = (dateClickInfo) => {
+    return handleDateClick(dateClickInfo, currentView, {
+      setSelectedDateInfo,
+      setIsModalOpen,
+    });
+  };
+
+  const handleDateSelectWrapper = (selectInfo) => {
+    return handleDateSelect(selectInfo, currentView, {
+      setSelectedDateInfo,
+      setIsModalOpen,
+    });
   };
 
   const handleModalClose = (refresh = false) => {
@@ -201,6 +123,16 @@ export default function Windows() {
     if (refresh) {
       refreshCalendarData();
     }
+  };
+
+  // Add handler for help icon click
+  const handleHelpIconClick = () => {
+    setIsHelpModalOpen(true);
+  };
+
+  // Add handler for help modal close
+  const handleHelpModalClose = () => {
+    setIsHelpModalOpen(false);
   };
 
   // Other existing event handlers (eventResize, eventDrop, eventClick)
@@ -312,7 +244,15 @@ export default function Windows() {
 
   return (
     <div className="mx-auto px-2 sm:px-5 mt-2 sm:mt-4">
-      <h2 className="mb-2 sm:mb-4 text-xl sm:text-2xl">My Windows</h2>
+      <h2 className="mb-2 sm:mb-4 text-xl text-center sm:text-2xl">
+        My Windows
+        <FontAwesomeIcon
+          className="hover:text-primary hover:cursor-pointer ms-2"
+          icon="fa-solid fa-circle-info"
+          size="sm"
+          onClick={handleHelpIconClick}
+        />
+      </h2>
 
       {error && (
         <div className="p-3 mb-3 bg-red-900/20 border border-red-500 text-red-400 rounded-md">
@@ -349,17 +289,17 @@ export default function Windows() {
                 selectMirror={true}
                 dayMaxEvents={isMobile ? 2 : true}
                 weekends={true}
-                datesSet={handleDatesSet}
+                datesSet={handleDatesSetWrapper}
                 height={isMobile ? "auto" : "auto"}
                 contentHeight="auto"
                 aspectRatio={isMobile ? 0.8 : 1.35}
-                select={handleDateSelect}
-                dateClick={handleDateClick}
+                select={handleDateSelectWrapper}
+                dateClick={handleDateClickWrapper}
                 eventClick={handleEventClick}
                 eventResize={handleEventResize}
                 eventDrop={handleEventDrop}
-                eventReceive={handleEventReceive} // Add the eventReceive handler
-                droppable={true} // Enable dropping external elements
+                eventReceive={handleEventReceiveWrapper}
+                droppable={true}
                 eventOverlap={false}
                 selectOverlap={(event) => {
                   if (currentView === "dayGridMonth") {
@@ -438,6 +378,12 @@ export default function Windows() {
         isOpen={isHangoutModalOpen}
         onClose={handleHangoutModalClose}
         hangoutData={selectedHangout}
+      />
+
+      {/* Window Help Modal */}
+      <WindowHelpModal
+        isOpen={isHelpModalOpen}
+        onClose={handleHelpModalClose}
       />
     </div>
   );

@@ -147,11 +147,14 @@ const Welcome = () => {
           <div className="flex items-center mb-3">
             <FontAwesomeIcon icon={faUsers} className="text-2xl mr-3" />
             <h3 className="text-xl font-semibold">
-              Step 3: Find Available Friends
+              Step 3: See Who's Free and When
             </h3>
           </div>
           <ul className="list-disc pl-6 mb-4 space-y-1">
-            <li>Compare your Windows with your friends' availability</li>
+            <li>
+              Check your Hyv view to see which friends have availability that
+              matches yours.
+            </li>
             <li>Send a Hangout Request for a specific time and activity</li>
             <li>Filter by categories to find the right group</li>
           </ul>

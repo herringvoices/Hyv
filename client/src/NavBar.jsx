@@ -14,7 +14,7 @@ const NavBar = () => {
   // Navigation items with notification badges
   const navItems = [
     { name: "Windows", path: "/windows" },
-    { name: "Hive", path: "/hive" },
+    { name: "Hyv", path: "/hive" },
     {
       name: "Friends",
       path: "/friends",
