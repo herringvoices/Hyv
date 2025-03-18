@@ -10,6 +10,7 @@ namespace Hyv.DTOs
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string FullName { get; set; }
+        public string ProfilePicture { get; set; }
 
         // Added related collections
         public IEnumerable<FriendshipDto> Friendships { get; set; } = new List<FriendshipDto>();
