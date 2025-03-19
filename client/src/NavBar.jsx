@@ -73,7 +73,7 @@ const NavBar = () => {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="absolute top-16 left-0 w-full bg-dark shadow-lg flex flex-col gap-2 p-4 md:hidden"
+          className="absolute top-16 left-0 w-full bg-dark shadow-lg flex flex-col gap-2 p-4 md:hidden z-50"
         >
           {navItems.map((item) => (
             <Link
@@ -118,7 +118,7 @@ const NavBar = () => {
             </button>
           </DropdownMenu.Trigger>
 
-          <DropdownMenu.Content className="bg-dark text-primary shadow-lg rounded-md p-2">
+          <DropdownMenu.Content className="bg-dark text-primary shadow-lg rounded-md p-2 z-50">
             <DropdownMenu.Item asChild>
               <Link
                 to="/profile"
