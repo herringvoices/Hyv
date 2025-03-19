@@ -8,6 +8,7 @@ using Hyv.Data;
 using Hyv.Models;
 using Hyv.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -95,7 +96,6 @@ builder
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-        
     })
     .AddJwtBearer(options =>
     {
@@ -188,6 +188,14 @@ builder.Services.AddCors(options =>
     );
 });
 
+// Configure cookie policy
+builder.Services.Configure<CookiePolicyOptions>(options =>
+{
+    options.MinimumSameSitePolicy = SameSiteMode.None;
+    options.Secure = CookieSecurePolicy.Always;
+    options.HttpOnly = HttpOnlyPolicy.Always;
+});
+
 builder.Services.AddAuthorization();
 
 // --- Register Services ---
@@ -245,6 +253,8 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowLocalDev");
+
+app.UseCookiePolicy();
 
 app.UseAuthentication();
 app.UseAuthorization();
