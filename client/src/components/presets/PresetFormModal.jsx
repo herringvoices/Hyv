@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, Checkbox } from "radix-ui";
+import { Dialog, Checkbox, Select } from "radix-ui";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createPreset, updatePreset } from "../../services/presetService";
 import { getAcceptedTagalongs } from "../../services/tagalongService";
@@ -30,7 +30,7 @@ export default function PresetFormModal({ isOpen, onClose, editingPreset }) {
     setTitle("");
     setStartTime("14:00");
     setEndTime("15:00");
-    setDaysOfNotice(1);
+    setDaysOfNotice(0);
     setActivityType("open");
     setActivityDescription("");
     setSelectedFriends([]);
@@ -109,7 +109,7 @@ export default function PresetFormModal({ isOpen, onClose, editingPreset }) {
       }
       setActivityType(actType);
       setActivityDescription(actDesc);
-      setDaysOfNotice(editingPreset.extendedProps?.daysOfNoticeNeeded || 1);
+      setDaysOfNotice(editingPreset.extendedProps?.daysOfNoticeNeeded || 0);
       // Set participants (exclude owner)
       if (editingPreset.extendedProps?.participants) {
         setSelectedFriends(
@@ -305,19 +305,67 @@ export default function PresetFormModal({ isOpen, onClose, editingPreset }) {
               <label className="block text-sm font-medium text-light mb-1">
                 Preferred Activity
               </label>
-              <select
-                className="w-full px-3 py-2 rounded border border-primary bg-dark text-light mb-2"
-                value={activityType}
-                onChange={(e) => setActivityType(e.target.value)}
-              >
-                <option value="open">I'm open!</option>
-                <option value="like">I'd like to be...</option>
-                <option value="will">I will be...</option>
-              </select>
+              <Select.Root value={activityType} onValueChange={setActivityType}>
+                <Select.Trigger
+                  className="w-full px-3 py-2 rounded border border-primary bg-dark text-light flex justify-between items-center"
+                  aria-label="Preferred Activity"
+                >
+                  <Select.Value placeholder="Select activity type" />
+                  <Select.Icon>
+                    <FontAwesomeIcon icon="chevron-down" />
+                  </Select.Icon>
+                </Select.Trigger>
+
+                <Select.Portal>
+                  <Select.Content
+                    position="popper"
+                    sideOffset={5}
+                    side="bottom"
+                    align="end"
+                    className="bg-dark border border-primary rounded shadow-lg z-50"
+                  >
+                    <Select.ScrollUpButton className="flex items-center justify-center h-6 bg-dark text-light cursor-default">
+                      <FontAwesomeIcon icon="chevron-up" />
+                    </Select.ScrollUpButton>
+                    <Select.Viewport className="p-1">
+                      <Select.Item
+                        value="open"
+                        className="px-3 py-2 hover:bg-primary hover:text-dark cursor-pointer rounded flex items-center h-8"
+                      >
+                        <Select.ItemText>I'm open!</Select.ItemText>
+                        <Select.ItemIndicator className="ml-auto">
+                          <FontAwesomeIcon icon="check" className="text-xs" />
+                        </Select.ItemIndicator>
+                      </Select.Item>
+                      <Select.Item
+                        value="like"
+                        className="px-3 py-2 hover:bg-primary hover:text-dark cursor-pointer rounded flex items-center h-8"
+                      >
+                        <Select.ItemText>I'd like to be...</Select.ItemText>
+                        <Select.ItemIndicator className="ml-auto">
+                          <FontAwesomeIcon icon="check" className="text-xs" />
+                        </Select.ItemIndicator>
+                      </Select.Item>
+                      <Select.Item
+                        value="will"
+                        className="px-3 py-2 hover:bg-primary hover:text-dark cursor-pointer rounded flex items-center h-8"
+                      >
+                        <Select.ItemText>I will be...</Select.ItemText>
+                        <Select.ItemIndicator className="ml-auto">
+                          <FontAwesomeIcon icon="check" className="text-xs" />
+                        </Select.ItemIndicator>
+                      </Select.Item>
+                    </Select.Viewport>
+                    <Select.ScrollDownButton className="flex items-center justify-center h-6 bg-dark text-light cursor-default">
+                      <FontAwesomeIcon icon="chevron-down" />
+                    </Select.ScrollDownButton>
+                  </Select.Content>
+                </Select.Portal>
+              </Select.Root>
               {(activityType === "like" || activityType === "will") && (
                 <input
                   type="text"
-                  className="w-full px-3 py-2 rounded border border-primary bg-dark text-light"
+                  className="mt-2 w-full px-3 py-2 rounded border border-primary bg-dark text-light"
                   value={activityDescription}
                   onChange={(e) => setActivityDescription(e.target.value)}
                   placeholder={
