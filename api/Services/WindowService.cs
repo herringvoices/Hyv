@@ -178,7 +178,7 @@ namespace Hyv.Services
                         // OR not enough notice time is left for the window
                         (
                             w.Start > now // Only future windows
-                            && (w.Start.Date - now.Date).Days <= w.DaysOfNoticeNeeded
+                            && (w.Start.Date - now.Date).Days < w.DaysOfNoticeNeeded
                         )
                     )
                 )
