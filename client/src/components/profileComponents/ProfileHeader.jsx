@@ -21,6 +21,7 @@ function ProfileHeader({ user, onUpdateUser }) {
         id: user.id,
         firstName,
         lastName,
+        profilePicture: user.profilePicture, // Include the current profile picture
       });
       setIsEditing(false);
       if (onUpdateUser) {
