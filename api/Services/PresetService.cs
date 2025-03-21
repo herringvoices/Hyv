@@ -354,27 +354,27 @@ namespace Hyv.Services
         // Helper method to adjust time from preset to target date
         private DateTime AdjustTimeToDate(DateTime sourceTime, DateTime targetDate)
         {
-            // Ensure both source and target are treated as UTC
-            DateTime sourceUtc =
-                sourceTime.Kind == DateTimeKind.Unspecified
-                    ? DateTime.SpecifyKind(sourceTime, DateTimeKind.Utc)
-                    : sourceTime.ToUniversalTime();
+            // If sourceTime & targetDate come in as DateTimeKind.Unspecified (or Local),
+            // label them Local first.
+            if (sourceTime.Kind == DateTimeKind.Unspecified)
+                sourceTime = DateTime.SpecifyKind(sourceTime, DateTimeKind.Local);
 
-            DateTime targetUtc =
-                targetDate.Kind == DateTimeKind.Unspecified
-                    ? DateTime.SpecifyKind(targetDate, DateTimeKind.Utc)
-                    : targetDate.ToUniversalTime();
+            if (targetDate.Kind == DateTimeKind.Unspecified)
+                targetDate = DateTime.SpecifyKind(targetDate, DateTimeKind.Local);
 
-            // Create a new UTC DateTime by combining target date with source time
-            return new DateTime(
-                targetUtc.Year,
-                targetUtc.Month,
-                targetUtc.Day,
-                sourceUtc.Hour,
-                sourceUtc.Minute,
-                sourceUtc.Second,
-                DateTimeKind.Utc
+            // Combine the local date with the local time.
+            var combinedLocal = new DateTime(
+                targetDate.Year,
+                targetDate.Month,
+                targetDate.Day,
+                sourceTime.Hour,
+                sourceTime.Minute,
+                sourceTime.Second,
+                DateTimeKind.Local
             );
+
+            // Now actually convert that local time to UTC, for proper storage in the DB.
+            return combinedLocal.ToUniversalTime();
         }
     }
 }
