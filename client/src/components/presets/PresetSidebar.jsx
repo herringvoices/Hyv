@@ -65,10 +65,10 @@ const PresetSidebar = ({ onPresetApplied }) => {
         const durationMs = presetEnd - presetStart;
 
         // Get the time parts from the preset
-        const startHours = presetStart.getHours();
-        const startMinutes = presetStart.getMinutes();
-        const endHours = presetEnd.getHours();
-        const endMinutes = presetEnd.getMinutes();
+        const startHours = presetStart.getUTCHours();
+        const startMinutes = presetStart.getUTCMinutes();
+        const endHours = presetEnd.getUTCHours();
+        const endMinutes = presetEnd.getUTCMinutes();
 
         return {
           id: `preset-${presetId}`,
