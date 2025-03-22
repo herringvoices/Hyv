@@ -188,16 +188,17 @@ namespace Hyv.Controllers
                     return Unauthorized("User ID not found in token");
                 }
 
-                var window = await _presetService.ApplyPresetAsync(id, request.TargetDate, userId);
+                var window = await _presetService.ApplyPresetAsync(
+                    id,
+                    request.TargetDate,
+                    request.TimezoneOffset,
+                    userId
+                );
                 return Ok(window);
             }
             catch (KeyNotFoundException)
             {
                 return NotFound($"Preset with ID {id} not found");
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(ex.Message);
             }
             catch (Exception ex)
             {
@@ -205,5 +206,11 @@ namespace Hyv.Controllers
                 return StatusCode(500, "An error occurred while applying the preset");
             }
         }
+    }
+
+    public class ApplyPresetRequest
+    {
+        public DateTime TargetDate { get; set; }
+        public int TimezoneOffset { get; set; }
     }
 }

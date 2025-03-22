@@ -15,6 +15,12 @@ namespace Hyv.Services
         Task<bool> DeletePresetAsync(int presetId, string userId);
         Task<bool> DeleteAllPresetsAsync(string userId); // Add this line
         Task<WindowDto> ApplyPresetAsync(int presetId, DateTime targetDate, string userId);
+        Task<WindowDto> ApplyPresetAsync(
+            int presetId,
+            DateTime targetDate,
+            int timezoneOffset,
+            string userId
+        );
     }
 
     public class PresetService : IPresetService
@@ -354,6 +360,56 @@ namespace Hyv.Services
             return await _windowService.CreateWindowAsync(windowDto);
         }
 
+        public async Task<WindowDto> ApplyPresetAsync(
+            int presetId,
+            DateTime targetDate,
+            int timezoneOffset,
+            string userId
+        )
+        {
+            // Find the preset
+            var preset = await _dbContext
+                .Presets.Include(p => p.PresetParticipants)
+                .Include(p => p.PresetVisibilities)
+                .FirstOrDefaultAsync(p => p.Id == presetId && p.UserId == userId);
+
+            if (preset == null)
+            {
+                throw new KeyNotFoundException($"Preset with ID {presetId} not found");
+            }
+
+            // Adjust start time using timezone offset
+            var adjustedStart = AdjustStartTimeToDate(preset.Start, targetDate, timezoneOffset);
+
+            // Create a window DTO from the preset
+            var windowDto = new WindowDto
+            {
+                Start = adjustedStart,
+                End = CalculateEndTime(preset.Start, preset.End, adjustedStart),
+                ExtendedProps = new WindowExtendedPropsDto
+                {
+                    UserId = userId,
+                    PreferredActivity = preset.PreferredActivity,
+                    DaysOfNoticeNeeded = preset.DaysOfNoticeNeeded,
+                    Active = true,
+                    Participants = preset
+                        .PresetParticipants?.Select(pp => new WindowParticipantDto
+                        {
+                            UserId = pp.UserId,
+                        })
+                        .ToList(),
+                    Visibilities = preset
+                        .PresetVisibilities?.Select(pv => new WindowVisibilityDto
+                        {
+                            CategoryId = pv.CategoryId,
+                        })
+                        .ToList(),
+                },
+            };
+
+            return await _windowService.CreateWindowAsync(windowDto);
+        }
+
         // Helper method to adjust start time to target date
         private DateTime AdjustStartTimeToDate(DateTime sourceTime, DateTime targetDate)
         {
@@ -367,6 +423,28 @@ namespace Hyv.Services
                 sourceTime.Second,
                 DateTimeKind.Utc
             );
+        }
+
+        // Updated helper method to use timezone offset
+        private DateTime AdjustStartTimeToDate(
+            DateTime sourceTime,
+            DateTime targetDate,
+            int timezoneOffset
+        )
+        {
+            // Convert the preset time from UTC to the user's local time
+            // Note: getTimezoneOffset returns minutes WEST of UTC, so we negate it
+            TimeSpan userOffset = TimeSpan.FromMinutes(-timezoneOffset);
+            DateTime sourceLocalTime = sourceTime.Add(userOffset);
+
+            // Extract the time of day component from local time
+            TimeSpan localTimeOfDay = sourceLocalTime.TimeOfDay;
+
+            // Apply the time of day to the target date (which is in UTC)
+            DateTime combined = targetDate.Date.Add(localTimeOfDay);
+
+            // Convert back to UTC for storage
+            return combined.Add(TimeSpan.FromMinutes(timezoneOffset));
         }
 
         // Calculate end time by preserving the original duration

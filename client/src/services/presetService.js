@@ -1,4 +1,4 @@
-const apiUrl = `${import.meta.env.VITE_API_URL || ''}/api/preset`;
+const apiUrl = `${import.meta.env.VITE_API_URL || ""}/api/preset`;
 
 /**
  * Create a new preset
@@ -26,7 +26,9 @@ export const createPreset = async (presetData) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to create preset: ${response.status} - ${errorText}`);
+      throw new Error(
+        `Failed to create preset: ${response.status} - ${errorText}`
+      );
     }
 
     return await response.json();
@@ -106,7 +108,9 @@ export const updatePreset = async (presetId, presetData) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to update preset: ${response.status} - ${errorText}`);
+      throw new Error(
+        `Failed to update preset: ${response.status} - ${errorText}`
+      );
     }
 
     return await response.json();
@@ -133,7 +137,9 @@ export const deletePreset = async (presetId) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to delete preset: ${response.status} - ${errorText}`);
+      throw new Error(
+        `Failed to delete preset: ${response.status} - ${errorText}`
+      );
     }
 
     return await response.json();
@@ -147,9 +153,10 @@ export const deletePreset = async (presetId) => {
  * Apply a preset to create a window at the target date
  * @param {number} presetId - ID of the preset to apply
  * @param {Date} targetDate - The target date for the window
+ * @param {number} timezoneOffset - The timezone offset in minutes
  * @returns {Promise<Object>} - Promise resolving to the created window
  */
-export const applyPreset = async (presetId, targetDate) => {
+export const applyPreset = async (presetId, targetDate, timezoneOffset) => {
   try {
     const response = await fetch(`${apiUrl}/${presetId}/apply`, {
       method: "POST",
@@ -157,12 +164,17 @@ export const applyPreset = async (presetId, targetDate) => {
         "Content-Type": "application/json",
       },
       credentials: "include",
-      body: JSON.stringify({ targetDate: targetDate.toISOString() }),
+      body: JSON.stringify({
+        targetDate: targetDate.toISOString(),
+        timezoneOffset: timezoneOffset,
+      }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to apply preset: ${response.status} - ${errorText}`);
+      throw new Error(
+        `Failed to apply preset: ${response.status} - ${errorText}`
+      );
     }
 
     return await response.json();

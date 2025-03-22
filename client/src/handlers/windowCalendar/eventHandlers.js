@@ -11,13 +11,16 @@ export const handleEventReceive = async (
     if (info.event.extendedProps?.presetId) {
       const presetId = info.event.extendedProps.presetId;
 
-      // Use the actual dropped event start time instead of zeroing it out
+      // Use the actual dropped event start time
       const dropDate = new Date(info.event.start);
+
+      // Get the user's timezone offset in minutes
+      const timezoneOffset = new Date().getTimezoneOffset();
 
       setError(null);
 
-      // Apply the preset at the drop date
-      await applyPreset(presetId, dropDate);
+      // Apply the preset at the drop date with timezone information
+      await applyPreset(presetId, dropDate, timezoneOffset);
 
       // Remove the temporary event
       info.revert();
