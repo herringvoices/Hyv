@@ -357,28 +357,16 @@ namespace Hyv.Services
         // Helper method to adjust start time to target date
         private DateTime AdjustStartTimeToDate(DateTime sourceTime, DateTime targetDate)
         {
-            // Extract the time of day from the preset in UTC (no conversions)
-            TimeSpan presetTimeOfDay = new TimeSpan(
-                sourceTime.Hour,
-                sourceTime.Minute,
-                sourceTime.Second
-            );
-
-            // Create a date-only DateTime with the target date
-            DateTime targetDateOnly = new DateTime(
+            // Direct approach: Extract time from source, date from target
+            return new DateTime(
                 targetDate.Year,
                 targetDate.Month,
                 targetDate.Day,
-                0,
-                0,
-                0,
+                sourceTime.Hour,
+                sourceTime.Minute,
+                sourceTime.Second,
                 DateTimeKind.Utc
             );
-
-            // Add the time components to the date
-            DateTime result = targetDateOnly.Add(presetTimeOfDay);
-
-            return result;
         }
 
         // Calculate end time by preserving the original duration
