@@ -354,49 +354,18 @@ namespace Hyv.Services
             return await _windowService.CreateWindowAsync(windowDto);
         }
 
-        // Helper method to adjust time from preset to target date
-        private DateTime AdjustTimeToDate(DateTime sourceTime, DateTime targetDate)
-        {
-            // Convert target date to Local to ensure consistent timezone handling
-            DateTime targetDateLocal = targetDate.ToLocalTime();
-
-            // Convert the stored UTC preset time to local time to recover wall-clock time
-            DateTime localPresetTime = sourceTime.ToLocalTime();
-
-            // Create a new DateTime using just the date from targetDate and time from preset
-            DateTime combinedLocal = new DateTime(
-                targetDateLocal.Year,
-                targetDateLocal.Month,
-                targetDateLocal.Day,
-                localPresetTime.Hour,
-                localPresetTime.Minute,
-                localPresetTime.Second,
-                DateTimeKind.Local
-            );
-
-            // Convert back to UTC for storage
-            return combinedLocal.ToUniversalTime();
-        }
-
         // Helper method to adjust start time to target date
         private DateTime AdjustStartTimeToDate(DateTime sourceTime, DateTime targetDate)
         {
-            // Convert target date to Local to ensure consistent timezone handling
-            DateTime targetDateLocal = targetDate.ToLocalTime();
+            // Extract the time of day from the preset in local time zone
+            TimeSpan presetLocalTimeOfDay = sourceTime.ToLocalTime().TimeOfDay;
 
-            // Convert the stored UTC preset time to local time to recover wall-clock time
-            DateTime localPresetTime = sourceTime.ToLocalTime();
+            // Get just the date portion from the target date (which comes from the frontend)
+            // Important: don't convert to local time as it's already in the context of the user's timezone
+            DateTime targetLocalDate = targetDate.Date;
 
-            // Create a new DateTime using just the date from targetDate and time from preset
-            DateTime combinedLocal = new DateTime(
-                targetDateLocal.Year,
-                targetDateLocal.Month,
-                targetDateLocal.Day,
-                localPresetTime.Hour,
-                localPresetTime.Minute,
-                localPresetTime.Second,
-                DateTimeKind.Local
-            );
+            // Combine the target date with the preset's time of day
+            DateTime combinedLocal = targetLocalDate.Add(presetLocalTimeOfDay);
 
             // Convert back to UTC for storage
             return combinedLocal.ToUniversalTime();
