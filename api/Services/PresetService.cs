@@ -354,21 +354,24 @@ namespace Hyv.Services
         // Helper method to adjust time from preset to target date
         private DateTime AdjustTimeToDate(DateTime sourceTime, DateTime targetDate)
         {
-            // Convert the stored UTC preset time to local time to recover the original wall-clock value.
+            // Convert target date to Local to ensure consistent timezone handling
+            DateTime targetDateLocal = targetDate.ToLocalTime();
+
+            // Convert the stored UTC preset time to local time to recover wall-clock time
             DateTime localPresetTime = sourceTime.ToLocalTime();
 
-            // Create a new DateTime on the target date using the local preset time components.
+            // Create a new DateTime using just the date from targetDate and time from preset
             DateTime combinedLocal = new DateTime(
-                targetDate.Year,
-                targetDate.Month,
-                targetDate.Day,
+                targetDateLocal.Year,
+                targetDateLocal.Month,
+                targetDateLocal.Day,
                 localPresetTime.Hour,
                 localPresetTime.Minute,
                 localPresetTime.Second,
                 DateTimeKind.Local
             );
 
-            // Convert the combined local time back to UTC before returning.
+            // Convert back to UTC for storage
             return combinedLocal.ToUniversalTime();
         }
     }
