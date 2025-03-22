@@ -321,11 +321,14 @@ namespace Hyv.Services
                 throw new KeyNotFoundException($"Preset with ID {presetId} not found");
             }
 
+            // Adjust start time and calculate end time based on original duration
+            var adjustedStart = AdjustStartTimeToDate(preset.Start, targetDate);
+
             // Create a window DTO from the preset
             var windowDto = new WindowDto
             {
-                Start = AdjustTimeToDate(preset.Start, targetDate),
-                End = AdjustTimeToDate(preset.End, targetDate),
+                Start = adjustedStart,
+                End = CalculateEndTime(preset.Start, preset.End, adjustedStart),
                 ExtendedProps = new WindowExtendedPropsDto
                 {
                     UserId = userId,
@@ -373,6 +376,44 @@ namespace Hyv.Services
 
             // Convert back to UTC for storage
             return combinedLocal.ToUniversalTime();
+        }
+
+        // Helper method to adjust start time to target date
+        private DateTime AdjustStartTimeToDate(DateTime sourceTime, DateTime targetDate)
+        {
+            // Convert target date to Local to ensure consistent timezone handling
+            DateTime targetDateLocal = targetDate.ToLocalTime();
+
+            // Convert the stored UTC preset time to local time to recover wall-clock time
+            DateTime localPresetTime = sourceTime.ToLocalTime();
+
+            // Create a new DateTime using just the date from targetDate and time from preset
+            DateTime combinedLocal = new DateTime(
+                targetDateLocal.Year,
+                targetDateLocal.Month,
+                targetDateLocal.Day,
+                localPresetTime.Hour,
+                localPresetTime.Minute,
+                localPresetTime.Second,
+                DateTimeKind.Local
+            );
+
+            // Convert back to UTC for storage
+            return combinedLocal.ToUniversalTime();
+        }
+
+        // Calculate end time by preserving the original duration
+        private DateTime CalculateEndTime(
+            DateTime originalStart,
+            DateTime originalEnd,
+            DateTime newStart
+        )
+        {
+            // Calculate duration of the original preset
+            TimeSpan duration = originalEnd - originalStart;
+
+            // Add that duration to the new start time
+            return newStart.Add(duration);
         }
     }
 }
