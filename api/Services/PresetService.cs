@@ -357,18 +357,28 @@ namespace Hyv.Services
         // Helper method to adjust start time to target date
         private DateTime AdjustStartTimeToDate(DateTime sourceTime, DateTime targetDate)
         {
-            // Extract the time of day from the preset in local time zone
-            TimeSpan presetLocalTimeOfDay = sourceTime.ToLocalTime().TimeOfDay;
+            // Extract the time of day from the preset in UTC (no conversions)
+            TimeSpan presetTimeOfDay = new TimeSpan(
+                sourceTime.Hour,
+                sourceTime.Minute,
+                sourceTime.Second
+            );
 
-            // Get just the date portion from the target date (which comes from the frontend)
-            // Important: don't convert to local time as it's already in the context of the user's timezone
-            DateTime targetLocalDate = targetDate.Date;
+            // Create a date-only DateTime with the target date
+            DateTime targetDateOnly = new DateTime(
+                targetDate.Year,
+                targetDate.Month,
+                targetDate.Day,
+                0,
+                0,
+                0,
+                DateTimeKind.Utc
+            );
 
-            // Combine the target date with the preset's time of day
-            DateTime combinedLocal = targetLocalDate.Add(presetLocalTimeOfDay);
+            // Add the time components to the date
+            DateTime result = targetDateOnly.Add(presetTimeOfDay);
 
-            // Convert back to UTC for storage
-            return combinedLocal.ToUniversalTime();
+            return result;
         }
 
         // Calculate end time by preserving the original duration
