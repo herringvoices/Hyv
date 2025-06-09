@@ -108,7 +108,15 @@ public class MappingProfile : Profile
             );
 
         CreateMap<WindowDto, Window>()
-            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => int.Parse(src.Id)))
+            .ForMember(
+                dest => dest.Id,
+                opt =>
+                    opt.MapFrom(src =>
+                        string.IsNullOrWhiteSpace(src.Id)
+                            ? 0
+                            : int.Parse(src.Id)
+                    )
+            )
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.Start, opt => opt.MapFrom(src => src.Start))
             .ForMember(dest => dest.End, opt => opt.MapFrom(src => src.End))
