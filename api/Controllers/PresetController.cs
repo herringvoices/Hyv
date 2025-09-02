@@ -152,29 +152,7 @@ namespace Hyv.Controllers
         [HttpDelete("all")]
         public async Task<IActionResult> DeleteAllPresets()
         {
-            try
-            {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(userId))
-                {
-                    return Unauthorized("User ID not found in token");
-                }
-
-                bool result = await _presetService.DeleteAllPresetsAsync(userId);
-                if (result)
-                {
-                    return Ok(new { message = "All presets deleted successfully" });
-                }
-                else
-                {
-                    return Ok(new { message = "No presets found to delete" });
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting all presets");
-                return StatusCode(500, "An error occurred while deleting presets");
-            }
+            return NotFound(); // Endpoint removed for safety
         }
 
         [HttpPost("{id}/apply")]
