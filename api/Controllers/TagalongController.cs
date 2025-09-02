@@ -38,15 +38,6 @@ namespace Hyv.Controllers
             return Ok(requests);
         }
 
-        [HttpDelete("all")]
-        public async Task<IActionResult> DeleteAllTagalongRequests()
-        {
-            var result = await _tagalongService.DeleteAllTagalongRequestsAsync();
-            if (!result)
-                return BadRequest(new { message = "Unable to delete tagalong requests." });
-            return Ok(new { message = "All tagalong requests deleted." });
-        }
-
         [HttpPost("{requestId:int}/respond")]
         public async Task<IActionResult> RespondToTagalongRequest(
             int requestId,

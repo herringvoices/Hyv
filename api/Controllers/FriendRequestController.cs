@@ -37,15 +37,6 @@ namespace Hyv.Controllers
             return Ok(requests);
         }
 
-        [HttpDelete("all")]
-        public async Task<IActionResult> DeleteAllFriendRequests()
-        {
-            var result = await _friendRequestService.DeleteAllFriendRequestsAsync();
-            if (!result)
-                return BadRequest(new { message = "Unable to delete friend requests." });
-            return Ok(new { message = "All friend requests deleted." });
-        }
-
         [HttpPost("{requestId:int}/respond")]
         public async Task<IActionResult> RespondToFriendRequest(
             int requestId,
